@@ -639,18 +639,11 @@ Parameters:
 function process_input_data(input::Array{Float32}, model::Model, info::Info)
     ndims = length(model.n)
     dataCell = Array{Array{Float32, ndims}, 1}(undef, info.nsrc)
-    if ndims == 2
-        input = reshape(input, model.n[1], model.n[2], info.nsrc)
-        for j=1:info.nsrc
-            dataCell[j] = input[:,:,j]
-        end
-    elseif ndims == 3
-        input = reshape(input, model.n[1], model.n[2], model.n[3], info.nsrc)
-        for j=1:info.nsrc
-            dataCell[j] = input[:,:,:,j]
-        end
-    else
-        throw("Number of dimensions not supported.")
+
+    input = reshape(input, model.n..., info.nsrc)
+    nd = ndims(input)
+    for j=1:info.nsrc
+        dataCell[j] = selectdim(input, nd, j)
     end
     return dataCell
 end

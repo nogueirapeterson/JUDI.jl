@@ -95,7 +95,7 @@ end
 @testset "Basic judiWavefield modeling tests" begin
 	opt = Options(dt_comp=dt)
 	F = judiModeling(info, model; options=opt)
-	Fa = judiModelingAdjoint(info, model; options=opt)
+	Fa = adjoint(F)
 	Ps = judiProjection(info, srcGeometry)
 	Pr = judiProjection(info, recGeometry)
 

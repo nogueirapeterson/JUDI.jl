@@ -30,17 +30,19 @@ function test_getindex(Op, nsrc)
 end
 
 
-########################################################### judiModeling ###############################################
+########################################################## judiModeling ###############################################
 
 @testset "judiModeling Unit Test with $(nsrc) sources" for nsrc=[1, 2]
 
     info = example_info(nsrc=nsrc)
     model = example_model()
     F_forward = judiModeling(info, model; options=Options())
-    F_adjoint = judiModelingAdjoint(info, model; options=Options())
+    F_adjoint = adjoint(F_forward)
 
+    @test F_adjoint.J == F_forward
+    @test adjoint(F_adjoint) == F_forward
     @test isequal(typeof(F_forward), judiModeling{Float32, Float32})
-    @test isequal(typeof(F_adjoint), judiModelingAdjoint{Float32, Float32})
+    @test isequal(typeof(F_adjoint), jAdjoint{judiModeling{Float32, Float32}, Float32, Float32})
 
     # conj, transpose, adjoint
     @test test_transpose(F_forward)
@@ -69,11 +71,13 @@ end
     model = example_model()
     rec_geometry = example_rec_geometry(nsrc=nsrc)
 
-    PDE_forward = judiPDE("PDE", info, model, rec_geometry; options=Options())
-    PDE_adjoint = judiPDEadjoint("PDEadjoint", info, model, rec_geometry; options=Options())
+    PDE_forward = judiPDE(info, model, rec_geometry; options=Options())
+    PDE_adjoint = adjoint(PDE_forward)
 
+    @test PDE_adjoint.J == PDE_forward
+    @test adjoint(PDE_adjoint) == PDE_forward
     @test isequal(typeof(PDE_forward), judiPDE{Float32, Float32})
-    @test isequal(typeof(PDE_adjoint), judiPDEadjoint{Float32, Float32})
+    @test isequal(typeof(PDE_adjoint), jAdjoint{judiPDE{Float32, Float32}, Float32, Float32})
 
     # conj, transpose, adjoint
     @test test_transpose(PDE_forward)
@@ -93,7 +97,7 @@ end
     @test isequal(PDE.srcGeometry, src_geometry)
 
     PDEad = PDE_adjoint*transpose(Ps)
-    @test isequal(typeof(PDEad), judiPDEfull{Float32, Float32})
+    @test isequal(typeof(PDEad), jAdjoint{judiPDEfull{Float32, Float32}, Float32, Float32})
     @test isequal(PDEad.srcGeometry, rec_geometry)
     @test isequal(PDEad.recGeometry, src_geometry)
 
@@ -132,7 +136,7 @@ end
 
     J = judiJacobian(PDE, q)
 
-    @test isequal(typeof(J), judiJacobian{Float32, Float32})
+    @test isequal(typeof(J), judiJacobian{judiVector{Float32, Vector{Float32}}, Float32, Float32})
     @test isequal(J.recGeometry, rec_geometry)
     @test isequal(J.source.geometry, src_geometry)
     @test all(isequal(J.source.data[i], wavelet) for i=1:nsrc)
@@ -153,7 +157,6 @@ end
 
 end
 
-
 ######################################################## judiJacobian ##################################################
 
 @testset "judiJacobianExtended Unit Test with $(nsrc) sources" for nsrc=[1, 2]
@@ -172,8 +175,8 @@ end
     @test isequal(typeof(J), judiJacobianExQ{Float32, Float32})
     @test isequal(J.recGeometry, rec_geometry)
     for i=1:nsrc
-        @test isapprox(J.wavelet[i], wavelet)
-        @test isapprox(J.weights[i], w.weights[i])
+        @test isapprox(J.source.wavelet[i], wavelet)
+        @test isapprox(J.source.weights[i], w.weights[i])
     end
     @test isequal(size(J)[2], prod(model.n))
     @test test_transpose(J)
@@ -182,14 +185,14 @@ end
     J_sub = J[1]
     @test isequal(J_sub.info.nsrc, 1)
     @test isequal(J_sub.model, J.model)
-    @test isapprox(J_sub.weights, J.weights[1:1])
+    @test isapprox(J_sub.source.weights, J.source.weights[1])
     @test isequal(size(J_sub)[1], Int(size(J)[1]/nsrc))
 
     inds = nsrc > 1 ? (1:nsrc) : 1
     J_sub = J[inds]
     @test isequal(J_sub.info.nsrc, nsrc)
     @test isequal(J_sub.model, J.model)
-    @test isapprox(J_sub.weights, J.weights[1:nsrc])
+    @test isapprox(J_sub.source.weights, J.source.weights[inds])
     @test isequal(size(J_sub), size(J))
 
     # Test Pw alone
