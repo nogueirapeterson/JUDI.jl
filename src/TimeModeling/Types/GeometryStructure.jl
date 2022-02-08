@@ -119,7 +119,7 @@ geometry object `GeometryOOC` without the source/receiver coordinates, but a loo
 
 """
 
-Geometry(coords::Array{T, 2}; kw...) where T = Geometry(coords[:, 1], T(0), coords[:, 2]; kw...)
+Geometry(coords::Array{T, 2}; kw...) where T = Geometry(coords[1, :], T(0), coords[2, :]; kw...)
 
 Geometry(xloc::CoordT, yloc::CoordT, zloc::CoordT, dt::Array{T,1}, nt::Array{Integer,1}, t::Array{T,1}) where T = GeometryIC{T}(xloc,yloc,zloc,dt,nt,t)
 
