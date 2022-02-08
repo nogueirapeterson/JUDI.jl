@@ -331,3 +331,5 @@ end
 
 similar(x::PhysicalParameter{vDT}, m::Model) where {vDT} = PhysicalParameter(m.n, m.d, m.o; vDT=vDT)
 similar(x::Array, m::Model) where {vDT} = similar(x, m.n)
+
+ndims(m::Model) = ndims(m.m.data)
