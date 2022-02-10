@@ -16,8 +16,6 @@ mutable struct Options
     file_name::String
     sum_padding::Bool
     optimal_checkpointing::Bool
-    num_checkpoints::Union{Integer, Nothing}
-    checkpoints_maxmem::Union{Real, Nothing}
     frequencies::Array
     isic::Bool
     subsampling_factor::Integer
@@ -38,8 +36,6 @@ end
         file_name::String
         sum_padding::Bool
         optimal_checkpointing::Bool
-        num_checkpoints::Integer
-        checkpoints_maxmem::Real
 	    frequencies::Array
 	    isic::Bool
         subsampling_factor::Integer
@@ -68,10 +64,6 @@ Options structure for seismic modeling.
 `sum_padding`: when removing the padding area of the gradient, sum into boundary rows/columns for true adjoints
 
 `optimal_checkpointing`: instead of saving the forward wavefield, recompute it using optimal checkpointing
-
-`num_checkpoints`: number of checkpoints. If not supplied, is set to log(num_timesteps).
-
-`checkpoints_maxmem`: maximum amount of memory that can be allocated for checkpoints (MB)
 
 `frequencies`: calculate the FWI/LS-RTM gradient in the frequency domain for a given set of frequencies
 
@@ -127,8 +119,6 @@ Options(;space_order=8,
 				 file_name,
 				 sum_padding,
 				 optimal_checkpointing,
-				 num_checkpoints,
-				 checkpoints_maxmem,
 				 frequencies,
 				 isic,
 				 subsampling_factor,
@@ -146,3 +136,5 @@ function subsample(options::Options, srcnum)
         return opt_out
     end
 end
+
+getindex(options::Options, srcnum) = subsample(options, srcnum)
