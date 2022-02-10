@@ -84,12 +84,14 @@ end
     # get index
     J_sub = J[1]
     @test isequal(J_sub.model, J.model)
-    @test isequal(J_sub.F, J.F)
+    @test isequal(J_sub.F, J.F[1])
+    @test isequal(J_sub.q, q[1])
 
     inds = nsrc > 1 ? (1:nsrc) : 1
     J_sub = J[inds]
     @test isequal(J_sub.model, J.model)
     @test isequal(J_sub.F, J.F[inds])
+    @test isequal(J_sub.q, q[inds])
 
 end
 
@@ -105,7 +107,8 @@ end
     F = judiModeling(model)
     Pw = judiLRWF(nsrc, wavelet)
     w = judiWeights(randn(Float32, model.n); nsrc=nsrc)
-    J = judiJacobian(Pr*F*Pw', w)
+    PDE = Pr*F*Pw'
+    J = judiJacobian(PDE, w)
 
     @test isequal(typeof(J), judiJacobian{Float32, :born, typeof(PDE)})
     @test isequal(J.F.rInterpolation.geometry, rec_geometry)
@@ -119,12 +122,11 @@ end
     # get index
     J_sub = J[1]
     @test isequal(J_sub.model, J.model)
-    @test isapprox(J_sub.q.weights, J.q.weights[1])
+    @test isapprox(J_sub.q.weights[1], J.q.weights[1])
 
-    inds = nsrc > 1 ? (1:nsrc) : 1
-    J_sub = J[inds]
+    J_sub = J[1:nsrc]
     @test isequal(J_sub.model, J.model)
-    @test isapprox(J_sub.q.weights, J.q.weights[inds])
+    @test isapprox(J_sub.q.weights, J.q.weights[1:nsrc])
 
     # Test Pw alone
     P1 = subsample(Pw, 1)
