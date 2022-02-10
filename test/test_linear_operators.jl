@@ -34,9 +34,8 @@ end
 
 @testset "judiModeling Unit Test with $(nsrc) sources" for nsrc=[1, 2]
 
-    info = example_info(nsrc=nsrc)
     model = example_model()
-    F_forward = judiModeling(info, model; options=Options())
+    F_forward = judiModeling(model; options=Options())
     F_adjoint = adjoint(F_forward)
 
     @test F_adjoint.J == F_forward
@@ -60,66 +59,6 @@ end
         @test isapprox(F2.model.m, a)
         @test F2.model.n == model.n
     end
-
-end
-
-############################################################# judiPDE ##################################################
-
-@testset "judiPDE Unit Test with $(nsrc) sources" for nsrc=[1, 2]
-
-    info = example_info(nsrc=nsrc)
-    model = example_model()
-    rec_geometry = example_rec_geometry(nsrc=nsrc)
-
-    PDE_forward = judiPDE(info, model, rec_geometry; options=Options())
-    PDE_adjoint = adjoint(PDE_forward)
-
-    @test PDE_adjoint.J == PDE_forward
-    @test adjoint(PDE_adjoint) == PDE_forward
-    @test isequal(typeof(PDE_forward), judiPDE{Float32, Float32})
-    @test isequal(typeof(PDE_adjoint), jAdjoint{judiPDE{Float32, Float32}, Float32, Float32})
-
-    # conj, transpose, adjoint
-    @test test_transpose(PDE_forward)
-    @test test_transpose(PDE_adjoint)
-
-    # get index
-    @test test_getindex(PDE_forward, nsrc)
-    @test test_getindex(PDE_adjoint, nsrc)
-
-    # Multiplication w/ judiProjection
-    src_geometry = example_src_geometry()
-    Ps = judiProjection(info, src_geometry)
-
-    PDE = PDE_forward*transpose(Ps)
-    @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
-    @test isequal(PDE.recGeometry, rec_geometry)
-    @test isequal(PDE.srcGeometry, src_geometry)
-
-    PDEad = PDE_adjoint*transpose(Ps)
-    @test isequal(typeof(PDEad), jAdjoint{judiPDEfull{Float32, Float32}, Float32, Float32})
-    @test isequal(PDEad.srcGeometry, rec_geometry)
-    @test isequal(PDEad.recGeometry, src_geometry)
-
-end
-
-######################################################### judiPDEfull ##################################################
-
-@testset "judiPDEfull Unit Test with $(nsrc) sources" for nsrc=[1, 2]
-
-    info = example_info(nsrc=nsrc)
-    model = example_model()
-    rec_geometry = example_rec_geometry(nsrc=nsrc)
-    src_geometry = example_src_geometry(nsrc=nsrc)
-    PDE = judiModeling(info, model, src_geometry, rec_geometry; options=Options())
-
-    @test isequal(typeof(PDE), judiPDEfull{Float32, Float32})
-    @test isequal(PDE.recGeometry, rec_geometry)
-    @test isequal(PDE.srcGeometry, src_geometry)
-
-    @test test_transpose(PDE)
-    @test test_getindex(PDE, nsrc)
-
 end
 
 ######################################################## judiJacobian ##################################################
