@@ -13,7 +13,7 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
-q1, srcGeometry1, recGeometry, info = setup_geom(model)
+q1, srcGeometry1, recGeometry = setup_geom(model)
 srcGeometry2 = deepcopy(srcGeometry1)
 srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:] 
 srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
@@ -149,9 +149,9 @@ end
 
 @testset "Extended source linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
     # Modeling operators
-    Pr = judiProjection(info, recGeometry)
-    F = judiModeling(info, model; options=opt)
-    Pw = judiLRWF(info, q1.data[1])
+    Pr = judiProjection(recGeometry)
+    F = judiModeling(model; options=opt)
+    Pw = judiLRWF(q1.geometry.dt[1], q1.data[1])
 
     A = Pr*F*adjoint(Pw)
     Aa = adjoint(A)

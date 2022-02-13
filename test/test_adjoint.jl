@@ -79,7 +79,7 @@ end
 
     Pr = judiProjection(info, recGeometry)
     Fw = judiModeling(info, model0; options=opt)
-    Pw = judiLRWF(info, q.data[1])
+    Pw = judiLRWF(q.geometry.dt[1], q.data[1])
     Fw = Pr*Fw*adjoint(Pw)
 
     # Extended source weights
