@@ -82,8 +82,8 @@ end
     Fw = Pr*Fw*adjoint(Pw)
 
     # Extended source weights
-    w = .5f0 .+ rand(model0.n...)
-    parsed_args["fs"] ? w[:, 1:2] .= 0f0 : nothing
+    w = .5f0 .+ rand(Float32, model0.n...)
+    parsed_args["fs"] && (w[:, 1:2] .= 0f0)
     w = judiWeights(w; nsrc=nw)
 
     # Forward-Adjoint computation
@@ -106,5 +106,4 @@ end
     d = dot(dm, dmw_hat)
     @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
     @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
-
 end

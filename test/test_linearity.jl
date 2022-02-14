@@ -30,13 +30,14 @@ ftol = 5f-5
     Ps1 = judiProjection(srcGeometry1)
     Ps2 = judiProjection(srcGeometry2)
     F = judiModeling(model; options=opt)
-    q2 = judiVector(srcGeometry2,q1.data[1])
+    q2 = judiVector(srcGeometry2, q1.data[1])
 
     A1 = Pr*F*adjoint(Ps1)
     A2 = Pr*F*adjoint(Ps2)
     J = judiJacobian(A1, q1)
 
     d1 = A1*q1
+    dma = adjoint(J) * d1
     d2 = A2*q2
     d3 = Pr*F*(adjoint(Ps1)*q1 + adjoint(Ps2)*q2)
     d4 = Pr*F*(adjoint(Ps1)*q1 - adjoint(Ps2)*q2)
@@ -158,8 +159,8 @@ end
     # Extended source weights
     w = randn(Float32, model0.n)
     x = randn(Float32, model0.n)
-    w[:, 1] .= 0f0; w = vec(w)
-    x[:, 1] .= 0f0; x = vec(x)
+    w[:, 1] .= 0f0;
+    x[:, 1] .= 0f0;
 
     J = judiJacobian(A, w)
 
