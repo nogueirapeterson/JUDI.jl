@@ -21,7 +21,7 @@ end
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
-q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=nw)
+q, srcGeometry, recGeometry = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 
 tol = 5f-4
@@ -73,12 +73,12 @@ end
 @testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 
     opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
-    F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+    F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
     # Nonlinear modeling
     y = F*q
 
-    Pr = judiProjection(info, recGeometry)
-    Fw = judiModeling(info, model0; options=opt)
+    Pr = judiProjection(recGeometry)
+    Fw = judiModeling(model0; options=opt)
     Pw = judiLRWF(q.geometry.dt[1], q.data[1])
     Fw = Pr*Fw*adjoint(Pw)
 
