@@ -57,7 +57,6 @@ tol = 5f-4
     dm_hat = J'*y
 
     c = dot(ld_hat, y)
-    @show norm(dm), norm(dm_hat)
     d = dot(dm_hat, dm)
     @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
     @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
