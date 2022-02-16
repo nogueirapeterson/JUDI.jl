@@ -51,23 +51,23 @@ include("Utils/seismic_preconditioners.jl")
 # const pde_types = Union{judiModeling, judiPDEfull, judiPDE, judiJacobian, judiJacobianExQ, judiPDEextended}
 
 
-# if VERSION>v"1.2"
-#   function (F::pde_types)(m::Model)
-#     Fl = deepcopy(F)
-#     Fl.model.n = m.n
-#     Fl.model.d = m.d
-#     Fl.model.o = m.o
-#     for (k, v) in m.params
-#       Fl.model.params[k] = v
-#     end
-#     Fl
-#   end
+if VERSION>v"1.2"
+  function (F::judiPropagator)(m::Model)
+    Fl = deepcopy(F)
+    Fl.model.n = m.n
+    Fl.model.d = m.d
+    Fl.model.o = m.o
+    for (k, v) in m.params
+      Fl.model.params[k] = v
+    end
+    Fl
+  end
 
-#   function (F::pde_types)(;kwargs...)
-#     Fl = deepcopy(F)
-#     for (k, v) in kwargs
-#       k in keys(Fl.model.params) && Fl.model.params[k] .= v
-#     end
-#     Fl
-#   end
-# end
+  function (F::judiPropagator)(;kwargs...)
+    Fl = deepcopy(F)
+    for (k, v) in kwargs
+      k in keys(Fl.model.params) && Fl.model.params[k] .= v
+    end
+    Fl
+  end
+end

@@ -17,7 +17,8 @@ end
 
 display(P::judiPropagator{D, O}) where {D, O} = println("JUDI $(operator(P)) propagator $(repr(P.n)) -> $(repr(P.m))")
 adjoint(s::Symbol) = adjoint_map[s]
-set_dm!(::judiPropagator, dm) = nothing
+
+update_model!(F::judiPropagator, dm) = update_model!(F.model, F.options, solver(F), nothing)
 
 # Base PDE type
 struct judiModeling{D, O} <: judiPropagator{D, O}
@@ -126,8 +127,6 @@ function make_input(J::judiJacobian{D, :adjoint_born, FT}, q::judiMultiSourceVec
     Dict(rI_kw..., qI_kw..., q_kw..., :rec_data=>rec_d)
 end
 
-set_dm!(J::judiJacobian{D, :born, FT}, dm) where {D, FT} = set_dm!(J.model, J.options, solver(J), dm)
-
 # A propagator with measurment returns an array based on the projection
 out_type(J::judiJacobian{D, :born, FT}, ndim) where {D, FT} = out_type(J.F.rInterpolation, ndim)
 out_type(::judiJacobian{D, :adjoint_born, FT}, ndim) where {D, FT} = Array{Float32, ndim}
@@ -141,6 +140,9 @@ end
 
 ==(F1::judiJacobian{D, O1, FT1}, F2::judiJacobian{D, O2, FT2}) where {D, O1, O2, FT1, FT2} = (O1 == O2 && FT1 == FT2 && F1.F == F2.F && F1.q == F2.q)
 
+update_model!(J::judiJacobian{D, :born, FT}, dm) where {D, FT} = update_model!(J.model, J.options, solver(J), dm)
+
+# Utilities
 solver(F::judiModeling) = F.solver
 solver(F::judiPropagator) = solver(F.F)
 

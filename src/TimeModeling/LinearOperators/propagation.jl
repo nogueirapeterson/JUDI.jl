@@ -14,14 +14,14 @@ function propagate(F::judiPropagator{T, O}, q::SourceType{T}) where {T, O}
     Tout = out_type(F, pysolver."model".dim)
     # Make Options
     t1 = @elapsed prop_kw = make_input(F, q, pysolver)
-    println("Setup time $(t1) sec")
+    judilog("Setup time $(t1) sec")
     # Propagate
     t1 = @elapsed dout = pycall(op, Tout; prop_kw...)
-    println("Call time $(t1) sec")
+    judilog("Call time $(t1) sec")
     # create out
     t1 = @elapsed dout = process_out(F, dout, pysolver.dt)
-    println("Postprocess time $(t1) sec")
-    println("")
+    judilog("Postprocess time $(t1) sec")
+    judilog("")
     return dout
 end
 
@@ -35,9 +35,8 @@ function *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O}
     pool = default_worker_pool()
     res = Vector{Future}(undef, nsrc)
     # Make sure the model has correct values
-    set_dm!(F, q)
+    update_model!(F, q)
     # Distribute source
-    propagate(F[1], src_i(F, q, 1))
     @sync for i=1:nsrc
         @async res[i] = remotecall(propagate, pool, F[i], src_i(F, q, i))
     end
@@ -45,5 +44,3 @@ function *(F::judiPropagator{T, O}, q::SourceType{T}) where {T<:Number, O}
     res = reduce!(res)
     return as_vec(res,  Val(F.options.return_array))
 end
-
-*(F::judiPropagator{T, O}, q::Vector{T}) = F*process_input_data(q, F.model, nsrc(F))
