@@ -9,6 +9,7 @@ parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
 tti = parsed_args["tti"]
+viscoacoustic = parsed_args["viscoacoustic"]
 fs =  parsed_args["fs"]
 
 # # Set parallel if specified
@@ -20,17 +21,18 @@ end
 @everywhere using JUDI, LinearAlgebra, Test, Distributed
 
 ### Model
-model, model0, dm = setup_model(parsed_args["tti"], parsed_args["nlayer"])
-q, srcGeometry, recGeometry, info = setup_geom(model; nsrc=nw)
+model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
+q, srcGeometry, recGeometry, info, f0 = setup_geom(model; nsrc=nw)
 dt = srcGeometry.dt[1]
 
 tol = 5f-4
 (tti && fs) && (tol = 5f-3)
 ###################################################################################################
 # Modeling operators
-@testset "Adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin 
+@testset "Adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
 
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
+    parsed_args["viscoacoustic"] ? abc_type = true : abc_type = false
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], abc_type=abc_type, f0=f0)
     F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
     # Nonlinear modeling
@@ -56,56 +58,66 @@ tol = 5f-4
     ld_hat = J*dm
     dm_hat = J'*y
 
-    c = dot(ld_hat, y)
-    @show norm(dm), norm(dm_hat)
-    d = dot(dm_hat, dm)
-    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
-    @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
+    if parsed_args["viscoacoustic"]
+        c = dot(ld_hat.data[1], y.data[1])
+        @show norm(dm.data), norm(dm_hat.data)
+        d = dot(dm_hat.data, dm.data)
+        @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
+        @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
+    else
+        c = dot(ld_hat, y)
+        @show norm(dm), norm(dm_hat)
+        d = dot(dm_hat, dm)
+        @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
+        @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
+    end
 
 end
 ###################################################################################################
-# Extended source modeling
-if parsed_args["tti"] &&  parsed_args["fs"]
-    # FS + tti leads to slightly worst (still fairly ok) accuracy
-    tol = 5f-3
-end
+if ~parsed_args["viscoacoustic"]
+    # Extended source modeling
+    if parsed_args["tti"] &&  parsed_args["fs"]
+        # FS + tti leads to slightly worst (still fairly ok) accuracy
+        tol = 5f-3
+    end
 
-@testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+    @testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
 
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
-    F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
-    # Nonlinear modeling
-    y = F*q
+        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"])
+        F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
+        # Nonlinear modeling
+        y = F*q
 
-    Pr = judiProjection(info, recGeometry)
-    Fw = judiModeling(info, model0; options=opt)
-    Pw = judiLRWF(info, q.data[1])
-    Fw = Pr*Fw*adjoint(Pw)
+        Pr = judiProjection(info, recGeometry)
+        Fw = judiModeling(info, model0; options=opt)
+        Pw = judiLRWF(info, q.data[1])
+        Fw = Pr*Fw*adjoint(Pw)
 
-    # Extended source weights
-    w = .5f0 .+ rand(model0.n...)
-    parsed_args["fs"] ? w[:, 1:2] .= 0f0 : nothing
-    w = judiWeights(w; nsrc=nw)
+        # Extended source weights
+        w = .5f0 .+ rand(model0.n...)
+        parsed_args["fs"] ? w[:, 1:2] .= 0f0 : nothing
+        w = judiWeights(w; nsrc=nw)
 
-    # Forward-Adjoint computation
-    dw_hat = Fw*w
-    w_hat = adjoint(Fw)*y
+        # Forward-Adjoint computation
+        dw_hat = Fw*w
+        w_hat = adjoint(Fw)*y
 
-    # Result F
-    a = dot(y, dw_hat)
-    b = dot(w, w_hat)
-    @printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a - b)/(a + b))
-    @test isapprox(a/(a+b), b/(a+b), atol=tol, rtol=0)
+        # Result F
+        a = dot(y, dw_hat)
+        b = dot(w, w_hat)
+        @printf(" <F x, y> : %2.5e, <x, F' y> : %2.5e, relative error : %2.5e \n", a, b, (a - b)/(a + b))
+        @test isapprox(a/(a+b), b/(a+b), atol=tol, rtol=0)
 
-    # Linearized modeling
-    Jw = judiJacobian(Fw, w)
+        # Linearized modeling
+        Jw = judiJacobian(Fw, w)
 
-    ddw_hat = Jw*dm
-    dmw_hat = adjoint(Jw)*y
+        ddw_hat = Jw*dm
+        dmw_hat = adjoint(Jw)*y
 
-    c = dot(y, ddw_hat)
-    d = dot(dm, dmw_hat)
-    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
-    @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
+        c = dot(y, ddw_hat)
+        d = dot(dm, dmw_hat)
+        @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
+        @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
 
+    end
 end
