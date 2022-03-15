@@ -1,5 +1,5 @@
 import numpy as np
-from sympy import Abs, Min, exp, sqrt
+from sympy import Abs, sqrt
 import warnings
 from devito import (Grid, Function, SubDomain, SubDimension, Eq,
                     Operator, mmin, initialize_function, switchconfig, sin, Inc)
@@ -44,7 +44,7 @@ class FSDomain(SubDomain):
 
 
 @switchconfig(log_level='ERROR')
-def initialize_damp_mask(damp, padsizes, spacing, fs=False, abc_type=False):
+def initialize_damp(damp, padsizes, spacing, abc_type=False, fs=False):
     """
     Initialize damping field with an absorbing boundary layer.
 
@@ -85,57 +85,12 @@ def initialize_damp_mask(damp, padsizes, spacing, fs=False, abc_type=False):
     Operator(eqs, name='initdamp')()
 
 
-@switchconfig(log_level='ERROR')
-def initialize_damp(damp, padsizes, spacing, fs=False):
-    """
-    Initialise damping field with an absorbing boundary layer.
-    Includes basic constant Q setup (not interfaced yet) and assumes that
-    the peak frequency is 1/(10 * spacing).
-
-    Parameters
-    ----------
-    damp : Function
-        The damping field for absorbing boundary condition.
-    nbl : int
-        Number of points in the damping layer.
-    spacing :
-        Grid spacing coefficient.
-    mask : bool, optional
-        whether the dampening is a mask or layer.
-        mask => 1 inside the domain and decreases in the layer
-        not mask => 0 inside the domain and increase in the layer
-    """
-    lqmin = np.log(.1)
-    lqmax = np.log(100)
-    w0 = 1/(10 * np.max(spacing))
-
-    z = damp.dimensions[-1]
-    eqs = [Eq(damp, 1)]
-
-    for (nbl, nbr), d in zip(padsizes, damp.dimensions):
-        if not fs or d is not z:
-            nbl = max(5, nbl - 10) if d is z else nbl
-            # left
-            dim_l = SubDimension.left(name='abc_%s_l' % d.name, parent=d,
-                                      thickness=nbl)
-            pos = Abs(dim_l - d.symbolic_min) / float(nbl)
-            eqs.append(Eq(damp.subs({d: dim_l}), Min(damp.subs({d: dim_l}), pos)))
-        # right
-        dim_r = SubDimension.right(name='abc_%s_r' % d.name, parent=d,
-                                   thickness=nbr)
-        pos = Abs(d.symbolic_max - dim_r) / float(nbr)
-        eqs.append(Eq(damp.subs({d: dim_r}), Min(damp.subs({d: dim_r}), pos)))
-
-    eqs.append(Eq(damp, w0 / exp(lqmin + damp * (lqmax - lqmin))))
-    Operator(eqs, name='initdamp')()
-
-
 class GenericModel(object):
     """
     General model class with common properties
     """
     def __init__(self, origin, spacing, shape, space_order, nbl=20,
-                 dtype=np.float32, fs=False, grid=None, abc_type=False):
+                 dtype=np.float32, fs=False, grid=None):
         self.shape = shape
         self.nbl = int(nbl)
         self.origin = tuple([dtype(o) for o in origin])
@@ -159,16 +114,8 @@ class GenericModel(object):
                                  dtype=dtype, subdomains=subdomains)
 
         if self.nbl != 0:
-            # Create dampening field as symbol `damp`
-            self.damp = Function(name="damp", grid=self.grid)
-            if abc_type:
-                initialize_damp_mask(self.damp, self.padsizes, spacing, fs=fs,
-                                     abc_type=abc_type)
-            else:
-                initialize_damp(self.damp, self.padsizes, spacing, fs=fs)
             self._physical_parameters = ['damp']
         else:
-            self.damp = 1
             self._physical_parameters = []
 
     @property
@@ -288,11 +235,12 @@ class Model(GenericModel):
     """
     def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, qp=None, dm=None, fs=False, abc_type=False, **kwargs):
+                 rho=1, qp=None, dm=None, fs=False, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
-                                    fs=fs, abc_type=abc_type, grid=kwargs.get('grid'))
+                                    fs=fs, grid=kwargs.get('grid'))
 
         self.scale = 1
+        self.abc_type = False
         self._space_order = space_order
         # Create square slowness of the wave as symbol `m`
         self._m = self._gen_phys_param(m, 'm', space_order)
@@ -304,6 +252,7 @@ class Model(GenericModel):
         if qp is not None:
             self._is_viscoacoustic = True
             self.qp = self._gen_phys_param(qp, 'qp', space_order)
+            self.abc_type = True
         else:
             self._is_viscoacoustic = False
         # Additional parameter fields for TTI operators
@@ -318,6 +267,14 @@ class Model(GenericModel):
             self.phi = self._gen_phys_param(phi, 'phi', space_order)
         # User provided dt
         self._dt = kwargs.get('dt')
+
+        if self.nbl != 0:
+            # Create dampening field as symbol `damp`
+            self.damp = Function(name="damp", grid=self.grid)
+            initialize_damp(self.damp, self.padsizes, spacing, abc_type=self.abc_type,
+                            fs=fs)
+        else:
+            self.damp = 1
 
     def _init_density(self, rho, so):
         """

@@ -16,12 +16,11 @@ viscoacoustic = parsed_args["viscoacoustic"]
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], parsed_args["nlayer"])
 q1, srcGeometry1, recGeometry, info, f0 = setup_geom(model)
 srcGeometry2 = deepcopy(srcGeometry1)
-srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:] 
+srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:]
 srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
 dt = srcGeometry1.dt[1]
 
-parsed_args["viscoacoustic"] ? abc_type = true : abc_type = false
-opt = Options(free_surface=parsed_args["fs"], abc_type=abc_type, f0=f0)
+opt = Options(free_surface=parsed_args["fs"], f0=f0)
 ftol = 5f-5
 
 ####################### Modeling operators ##########################################

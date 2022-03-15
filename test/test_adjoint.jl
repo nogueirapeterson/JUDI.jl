@@ -31,8 +31,7 @@ tol = 5f-4
 # Modeling operators
 @testset "Adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
 
-    parsed_args["viscoacoustic"] ? abc_type = true : abc_type = false
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], abc_type=abc_type, f0=f0)
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
     F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
     # Nonlinear modeling
