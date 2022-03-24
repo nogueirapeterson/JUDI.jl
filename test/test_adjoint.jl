@@ -61,15 +61,13 @@ tol = 5f-4
         c = dot(ld_hat.data[1], y.data[1])
         @show norm(dm.data), norm(dm_hat.data)
         d = dot(dm_hat.data, dm.data)
-        @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
-        @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
     else
         c = dot(ld_hat, y)
         @show norm(dm), norm(dm_hat)
         d = dot(dm_hat, dm)
-        @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
-        @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
     end
+    @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
+    @test isapprox(c/(c+d), d/(c+d), atol=tol, rtol=0)
 
 end
 ###################################################################################################
@@ -112,7 +110,6 @@ if ~parsed_args["viscoacoustic"]
 
         ddw_hat = Jw*dm
         dmw_hat = adjoint(Jw)*y
-
         c = dot(y, ddw_hat)
         d = dot(dm, dmw_hat)
         @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, (c - d)/(c + d))
