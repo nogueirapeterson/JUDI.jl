@@ -2,13 +2,13 @@
 export lsrtm_objective
 
 # Other potential calls
-lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool, options::Options) = lsrtm_objective(model_full, source, dObs, dm, options, nlind)
-lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options) = lsrtm_objective(model_full, source, dObs, dm, options, false)
-lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}) = lsrtm_objective(model_full, source, dObs, dm; options=Options(), nlind=false)
-lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, nlind::Bool) = lsrtm_objective(model_full, source, dObs, dm, Options(), nlind)
+lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, pert::Union{Array, PhysicalParameter}, nlind::Bool, options::Options) = lsrtm_objective(model_full, source, dObs, pert, options, nlind)
+lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, pert::Union{Array, PhysicalParameter}, options::Options) = lsrtm_objective(model_full, source, dObs, pert, options, false)
+lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, pert::Union{Array, PhysicalParameter}) = lsrtm_objective(model_full, source, dObs, pert; options=Options(), nlind=false)
+lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, pert::Union{Array, PhysicalParameter}, nlind::Bool) = lsrtm_objective(model_full, source, dObs, pert, Options(), nlind)
 
 
-function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, dm::Union{Array, PhysicalParameter}, options::Options, nlind::Bool)
+function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector, pert::Union{Array, PhysicalParameter}, options::Options, nlind::Bool)
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source lsrtm_objective"
     @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source lsrtm_objective"
@@ -20,13 +20,13 @@ function lsrtm_objective(model_full::Model, source::judiVector, dObs::judiVector
     # Limit model to area with sources/receivers
     if options.limit_m == true
         model = deepcopy(model_full)
-        model, dm = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size; pert=dm)
+        model, pert = limit_model_to_receiver_area(source.geometry,dObs.geometry,model,options.buffer_size; pert=pert)
     else
         model = model_full
     end
 
     # Set up Python model structure
-    modelPy = devito_model(model, options; dm=dm)
+    modelPy = devito_model(model, options; pert=pert)
     dtComp = get_dt(model; dt=options.dt_comp)
 
     # Extrapolate input data to computational grid

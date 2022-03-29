@@ -22,15 +22,25 @@ Parameters
 * `options`: JUDI Options structure.
 * `dm`: Squared slowness perturbation (optional), Array or PhysicalParameter.
 """
-function devito_model(model::Model, options::Options; dm=nothing)
+function devito_model(model::Model, options::Options; pert=nothing)
     pad = pad_sizes(model, options)
     # Set up Python model structure
     m = pad_array(model[:m].data, pad)
-    !isnothing(dm) && (dm = pad_array(reshape(getattr(dm, :data, dm), model.n), pad))
+
+    if isa(pert, Tuple)
+        pert_ = []
+        for i=1:length(pert)
+            !isnothing(pert[i]) && (tmp = pad_array(reshape(getattr(pert[i], :data, pert[i]), model.n), pad))
+            push!(pert_, tmp)
+        end
+    else
+        !isnothing(pert) && (pert = pad_array(reshape(getattr(pert, :data, pert), model.n), pad))
+        pert_ = pert
+    end
     physpar = Dict((n, pad_array(v.data, pad)) for (n, v) in model.params if n != :m)
     modelPy = pm."Model"(model.o, model.d, model.n, m, fs=options.free_surface,
-                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=dm;
-                         physpar...)
+                         nbl=model.nb, space_order=options.space_order, dt=options.dt_comp, dm=pert_,
+                         multi_parameters=options.multi_parameters; physpar...)
     return modelPy
 end
 
@@ -177,8 +187,16 @@ function limit_model_to_receiver_area(srcGeometry::Geometry, recGeometry::Geomet
     judilog("N new $(model.n)")
     isnothing(pert) && (return model, nothing)
 
-    pert = reshape(pert, n_orig)[inds...]
-    return model, vec(pert)
+    if ~(isa(pert, Tuple))
+        pert = reshape(pert, n_orig)[inds...]
+        return model, vec(pert)
+    else
+        pert_ = []
+        for i=1:length(pert)
+            push!(pert_, vec(reshape(pert[i], n_orig)[inds...]))
+        end
+        return model, pert_
+    end
 end
 
 """

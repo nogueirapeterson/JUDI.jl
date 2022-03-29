@@ -17,9 +17,10 @@ def wave_kernel(model, u, fw=True, q=None, f0=0.015):
         wavefield (tuple if TTI or Viscoacoustic)
     fw : Bool
         Whether forward or backward in time propagation
-    q : TimeFunction or Expr
+    q : TimeFunction or Expr (tuple if Viscoacoustic)
         Full time-space source
-    f0 : Peak frequency
+    f0: Float (optional)
+        peak frequency
     """
     if model.is_tti:
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
@@ -78,12 +79,17 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
         Attenuation Memory variable
     fw: Bool
         Whether forward or backward in time propagation
-    q : TimeFunction or Expr
+    q : TimeFunction or Expr (Tuple if Viscoacoustic)
         Full time-space source as a tuple (one value for each component)
-    f0 : Peak frequency
+    f0: Float (optional)
+        peak frequency
     """
-    vp, qp, b, damp = model.vp, model.qp, model.irho, model.damp
-    q = q or 0
+    qp, vp = model.qp, model.vp
+
+    damp = model.damp
+
+    b = model.irho
+
     s = model.grid.stepping_dim.spacing
 
     # The stress relaxation parameter
@@ -101,16 +107,16 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     # Bulk modulus
     bm = rho * vp**2
 
+    q = q or 0
+
     p = u1
     r = u2
 
     if fw:
-
-        # Attenuation Memory variable.
         pde_r = r + s * (tt / t_s) * div(b * grad(p, shift=.5), shift=-.5) - \
             s * (1. / t_s) * r
         u_r = Eq(r.forward, damp * pde_r)
-        # Pressure
+
         pde_p = 2. * p - damp * p.backward + s**2 * bm * (1. + tt) * \
             div(b * grad(p, shift=.5), shift=-.5) - s**2 * bm * \
             r.forward + s**2 * bm * q
@@ -119,11 +125,9 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
         return [u_r, u_p]
 
     else:
-
-        # Attenuation Memory variable.
         pde_r = r - s * p - s * (1. / t_s) * r
         u_r = Eq(r.backward, damp * pde_r)
-        # Pressure
+
         pde_p = 2. * p - damp * p.forward + s**2 * bm * \
             div(b * grad((1. + tt) * p, shift=.5), shift=-.5) + s**2 * bm * \
             div(b * grad((tt/t_s) * r.backward, shift=.5), shift=-.5)

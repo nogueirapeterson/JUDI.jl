@@ -43,7 +43,7 @@ m0 = ndimage.gaussian_filter(m, sigma=10)
 m0[m > 1/1.51**2] = m[m > 1/1.51**2]
 m0 = ndimage.gaussian_filter(m0, sigma=3)
 rho0 = (m0**(-.5)+.5)/2
-dm = m0 - m
+dm = m - m0
 dm[:, -1] = 0.
 # Set up model structures
 v0 = m0**(-.5)
@@ -95,7 +95,7 @@ dm_hat, _ = gradient(model, dD_hat, rec_t.coordinates.data, u0, f0=f1)
 
 if is_viscoacoustic:
     # Adjoint test: Verify <Ax,y> matches  <x, A^Ty> closely
-    term1 = np.dot(dm_hat.data.reshape(-1), model.dm.data.reshape(-1))
+    term1 = np.dot(dm_hat[0].data.reshape(-1), model.dkappa.data.reshape(-1))
     term2 = np.linalg.norm(dD_hat.data)**2
     info('<x, J^Ty>: %f, <Jx,y>: %f, difference: %4.4e, ratio: %f'
          % (term1, term2, (term1 - term2)/term1, term1 / term2))

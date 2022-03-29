@@ -1,7 +1,8 @@
 import numpy as np
+import sympy as sp
 from sympy import cos, sin
 
-from devito import Eq
+from devito import Eq, div, grad
 from devito.tools import as_tuple
 
 from wave_utils import sub_time, freesurface
@@ -18,7 +19,8 @@ def func_name(freq=None, isic=False):
         return 'isic_freq' if isic else 'corr_freq'
 
 
-def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
+def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False, f0=None,
+              multi_parameters=None):
     """
     Gradient update stencil
 
@@ -38,18 +40,31 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
         Subsampling factor for DFT
     isic: Bool
         Whether or not to use inverse scattering imaging condition (not supported yet)
+    f0: Float (optional)
+        peak frequency
+    multi_parameters: Tuple
+        define whether the approach is single or multi parameters
     """
-    if model.is_viscoacoustic:
-        u, v = (u[0],), (v[0],)
-        if isic:
-            raise ValueError("Inverse scattering imaging condition (not supported yet)")
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
-    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
+    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w,
+                   f0=f0)
     if model.fs:
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)
     else:
-        eq_g = [Eq(gradm, gradm - expr)]
+        if model.is_viscoacoustic and (isic is False) and (freq is None):
+            if (multi_parameters is not None and multi_parameters[0]) or \
+               (multi_parameters is None):
+                eq_gm = [Eq(gradm[0], gradm[0] - expr[0])]
+            else:
+                eq_gm = []
+            if multi_parameters is not None and multi_parameters[1]:
+                eq_gtau = [Eq(gradm[1], gradm[1] + expr[1])]
+            else:
+                eq_gtau = []
+            eq_g = eq_gm + eq_gtau
+        else:
+            eq_g = [Eq(gradm, gradm - expr)]
     return eq_g
 
 
@@ -68,8 +83,15 @@ def crosscorr_time(u, v, model, **kwargs):
     """
     if model.is_viscoacoustic:
         s = model.grid.stepping_dim.spacing
-        pdt2 = (u[0].forward - 2 * u[0] + u[0].backward) / (s**2)
-        return pdt2 * v[0]
+        b = model.irho
+        f0 = kwargs.get('f0', 0)
+        qp = model.qp
+        t_s = (sp.sqrt(1.+1./qp**2)-1./qp)/f0
+        udt2 = (u[0].forward - 2 * u[0] + u[0].backward) / (s**2)
+        udt2v = udt2 * v[0]
+        jdtau = div(b * grad(u[0], shift=.5), shift=-.5) * v[0] + (1/t_s) * \
+            div(b * grad(u[0], shift=.5), shift=-.5) * v[1]
+        return (udt2v, jdtau)
 
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
     return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
@@ -92,6 +114,8 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     factor: int
         Subsampling factor for DFT
     """
+    if model.is_viscoacoustic:
+        u, v = (u[0],), (v[0],)
     time = model.grid.time_dim
     dt = time.spacing
     tsave, factor = sub_time(time, dft_sub)
@@ -165,7 +189,7 @@ def isic_freq(u, v, model, **kwargs):
     return expr
 
 
-def lin_src(model, u, isic=False):
+def lin_src(model, u, isic=False, f0=0.015, multi_parameters=None):
     """
     Source for linearized modeling
 
@@ -179,10 +203,10 @@ def lin_src(model, u, isic=False):
     if model.is_viscoacoustic and isic:
         raise ValueError("ISIC source for linearized modeling (not supported yet)")
     ls_func = ls_dict[func_name(isic=isic)]
-    return ls_func(model, as_tuple(u))
+    return ls_func(model, as_tuple(u), f0=f0, multi_parameters=multi_parameters)
 
 
-def basic_src(model, u, **kwargs):
+def basic_src(model, u, f0=0.015, multi_parameters=None, **kwargs):
     """
     Basic source for linearized modeling
 
@@ -193,12 +217,37 @@ def basic_src(model, u, **kwargs):
     model: Model
         Model containing the perturbation dm
     """
-    w = -model.dm * model.irho
-    if model.is_tti:
-        return (w * u[0].dt2, w * u[1].dt2)
     if model.is_viscoacoustic:
         s = model.grid.stepping_dim.spacing
-        return -model.dm * (u[0].forward - 2 * u[0] + u[0].backward) / (s**2)
+        b = model.irho
+        qp = model.qp
+
+        # The stress relaxation parameter
+        t_s = (sp.sqrt(1.+1./qp**2)-1./qp)/f0
+
+        # The strain relaxation parameter
+        t_ep = 1./(f0**2*t_s)
+
+        # The relaxation time
+        tt = (t_ep/t_s)-1.
+        if (multi_parameters is not None and multi_parameters[0]) or (multi_parameters is
+                                                                      None):
+            dkappa = model.dkappa
+            qkappa = - dkappa * (u[0].forward - 2 * u[0] + u[0].backward) / (s**2)
+        else:
+            qkappa = 0
+        if multi_parameters is not None and multi_parameters[1]:
+            dtau = model.dtau
+            qtau = dtau * div(b * grad(u[0], shift=.5), shift=-.5) - (dtau * u[1] / tt)
+        else:
+            qtau = 0
+        return qkappa + qtau
+    if multi_parameters is None:
+        w = -model.dm * model.irho
+    else:
+        raise ValueError("Multi-parameters basic source (not supported yet)")
+    if model.is_tti:
+        return (w * u[0].dt2, w * u[1].dt2)
     return w * u[0].dt2
 
 
