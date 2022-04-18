@@ -236,7 +236,7 @@ class Model(GenericModel):
     """
     def __init__(self, origin, spacing, shape, m, space_order=2, nbl=40,
                  dtype=np.float32, epsilon=None, delta=None, theta=None, phi=None,
-                 rho=1, qp=None, dm=None, fs=False, **kwargs):
+                 rho=1, qp=None, dm=None, fs=False, multi_parameters=None, **kwargs):
         super(Model, self).__init__(origin, spacing, shape, space_order, nbl, dtype,
                                     fs=fs, grid=kwargs.get('grid'))
 
@@ -247,13 +247,28 @@ class Model(GenericModel):
         self._m = self._gen_phys_param(m, 'm', space_order)
         # density
         self._init_density(rho, space_order)
-        self._dm = self._gen_phys_param(dm, 'dm', space_order)
-
+        if multi_parameters is None:
+            self._dm = self._gen_phys_param(dm, 'dm', space_order)
         # Additional parameter fields for Viscoacoustic operators
         if qp is not None:
             self._is_viscoacoustic = True
             self.qp = self._gen_phys_param(qp, 'qp', space_order)
             self.abc_type = True
+            if multi_parameters is None:
+                self.dkappa = self._gen_phys_param(dm, 'dkappa', space_order)
+            else:
+                if multi_parameters[0]:
+                    dkappa = dm[0] if (isinstance(dm, list) or
+                                       isinstance(dm, tuple)) else dm
+                    self.dkappa = self._gen_phys_param(dkappa, 'dkappa', space_order)
+                else:
+                    self.dkappa = None
+                if multi_parameters[1]:
+                    dtau = dm[1] if (isinstance(dm, list) or
+                                     isinstance(dm, tuple)) else dm
+                    self.dtau = self._gen_phys_param(dtau, 'dtau', space_order)
+                else:
+                    self.dtau = None
         else:
             self._is_viscoacoustic = False
         # Additional parameter fields for TTI operators

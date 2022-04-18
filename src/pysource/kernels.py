@@ -95,9 +95,6 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     # The relaxation time
     tt = (t_ep/t_s)-1.
 
-    # Density
-    rho = 1. / b
-
     # Inverse of bulk modulus
     m = model.m * b
 
@@ -107,12 +104,12 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     if fw:
 
         # Attenuation Memory variable.
-        pde_r = r.dt - (tt / t_s) * rho * div(b * grad(p, shift=.5), shift=-.5) + \
+        pde_r = r.dt - (tt / t_s) * div(b * grad(p, shift=.5), shift=-.5) + \
             (1. / t_s) * r
         u_r = Eq(r.forward, damp * solve(pde_r, r.forward))
         # Pressure
-        pde_p = m * p.dt2 - (1. + tt) * div(b * grad(p, shift=.5), shift=-.5) + \
-            b * r.forward - q + (1 - damp) * p.dt
+        pde_p = m * p.dt2 - (1 + tt) * div(b * grad(p, shift=.5), shift=-.5) + \
+            r.forward - q + (1 - damp) * p.dt
         u_p = Eq(p.forward, damp * solve(pde_p, p.forward))
 
         return [u_r, u_p]
@@ -120,12 +117,12 @@ def SLS_2nd_order(model, u1, u2, fw=True, q=None, f0=0.015):
     else:
 
         # Attenuation Memory variable.
-        pde_r = - r.dt.T + (tt / t_s) * p - (1. / t_s) * r
+        pde_r = r.dt.T + (1. / t_s) * r + p
         u_r = Eq(r.backward, damp * solve(pde_r, r.backward))
         # Pressure
-        pde_p = m * p.dt2 - b * \
-            div(b * grad((1. + tt) * rho * p, shift=.5), shift=-.5) + b * \
-            div(b * grad(rho * r.backward, shift=.5), shift=-.5) + (1 - damp) * p.dt.T
+        pde_p = m * p.dt2 - div(b * grad((1. + tt) * p, shift=.5), shift=-.5) - \
+            div(b * grad((tt/t_s) * r.backward, shift=.5), shift=-.5) + \
+            (1 - damp) * p.dt.T
         u_p = Eq(p.backward, damp * solve(pde_p, p.backward))
 
         return [u_r, u_p]

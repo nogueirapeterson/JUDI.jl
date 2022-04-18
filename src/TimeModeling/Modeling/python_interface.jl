@@ -10,6 +10,8 @@ end
 
 wrapcall_function(func, args...;kw...) = pycall(func, PyArray, args...;kw...)
 
+wrapcall_function_multi_parameters(func, args...;kw...) = pycall(func, Tuple{PyArray, PyArray}, args...;kw...)
+
 # d_obs = Pr*F*Ps'*q
 function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry, recData::Nothing, dm::Nothing, options::Options)
     # Interpolate input data to computational grid
@@ -147,7 +149,7 @@ end
 
 # d_lin = J*dm
 function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcData::Array, recGeometry::Geometry,
-                          recData::Nothing, dm::Union{PhysicalParameter, Array}, options::Options)
+                          recData::Nothing, dm::Union{PhysicalParameter, Array, Tuple}, options::Options)
 
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -160,7 +162,8 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcDa
 
     # Devito call
     dOut = wrapcall_data(ac."born_rec", modelPy, src_coords, qIn, rec_coords,
-                  space_order=options.space_order, isic=options.isic, f0=options.f0)
+                  space_order=options.space_order, isic=options.isic, f0=options.f0,
+                  multi_parameters=options.multi_parameters)
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output linearized shot records as judiVector
@@ -185,15 +188,33 @@ function devito_interface(modelPy::PyCall.PyObject, srcGeometry::Geometry, srcDa
     src_coords = setup_grid(srcGeometry, modelPy.shape)
     rec_coords = setup_grid(recGeometry, modelPy.shape)
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
-    grad = wrapcall_function(ac."J_adjoint", modelPy,
+    if isnothing(options.multi_parameters) || count(x->x==1, options.multi_parameters) == 1
+        grad = wrapcall_function(ac."J_adjoint", modelPy,
                   src_coords, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
                   space_order=options.space_order, checkpointing=options.optimal_checkpointing,
                   freq_list=freqs, isic=options.isic,
-                  dft_sub=options.dft_subsampling_factor[1], f0=options.f0)
+                  dft_sub=options.dft_subsampling_factor[1], f0=options.f0,
+                  multi_parameters=options.multi_parameters)
+    else
+        grad = wrapcall_function_multi_parameters(ac."J_adjoint", modelPy,
+                  src_coords, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
+                  space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                  freq_list=freqs, isic=options.isic,
+                  dft_sub=options.dft_subsampling_factor[1], f0=options.f0,
+                  multi_parameters=options.multi_parameters)
+    end
 
     # Remove PML and return gradient as Array
-    grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
-    return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
+    if isa(grad, Tuple)
+        grad_ = []
+        for i=1:length(grad)
+            push!(grad_, PhysicalParameter(remove_padding(grad[i], modelPy.padsizes; true_adjoint=options.sum_padding), modelPy.spacing, modelPy.origin))
+        end
+        return grad_
+    else
+        grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
+        return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
+    end
 end
 
 ######################################################################################################################################################
@@ -243,7 +264,7 @@ end
 
 # Jacobian of extended source modeling: d_lin = J*dm
 function devito_interface(modelPy::PyCall.PyObject, srcData::Array, recGeometry::Geometry, recData::Nothing, weights::Array,
-                          dm::Union{PhysicalParameter, Array}, options::Options)
+                          dm::Union{PhysicalParameter, Array, Tuple}, options::Options)
 
     # Interpolate input data to computational grid
     dtComp = convert(Float32, modelPy."critical_dt")
@@ -254,7 +275,8 @@ function devito_interface(modelPy::PyCall.PyObject, srcData::Array, recGeometry:
 
     # Devito call
     dOut = wrapcall_data(ac."born_rec_w", modelPy, weights, qIn, rec_coords,
-                  space_order=options.space_order, isic=options.isic, f0=options.f0)
+                  space_order=options.space_order, isic=options.isic, f0=options.f0,
+                  multi_parameters=options.multi_parameters)
     dOut = time_resample(dOut, dtComp, recGeometry)
 
     # Output linearized shot records as judiVector
@@ -277,12 +299,30 @@ function devito_interface(modelPy::PyCall.PyObject, srcData::Array, recGeometry:
     # Set up coordinates with devito dimensions
     rec_coords = setup_grid(recGeometry, modelPy.shape)
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
-    grad = wrapcall_function(ac."J_adjoint", modelPy,
-                  nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
-                  space_order=options.space_order, checkpointing=options.optimal_checkpointing,
-                  freq_list=freqs, isic=options.isic, ws=weights,
-                  dft_sub=options.dft_subsampling_factor[1], f0=options.f0)
+    if isnothing(options.multi_parameters) || count(x->x==1, options.multi_parameters) == 1
+        grad = wrapcall_function(ac."J_adjoint", modelPy,
+                    nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
+                    space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                    freq_list=freqs, isic=options.isic, ws=weights,
+                    dft_sub=options.dft_subsampling_factor[1], f0=options.f0,
+                    multi_parameters=options.multi_parameters)
+    else
+        grad = wrapcall_function_multi_parameters(ac."J_adjoint", modelPy,
+                    nothing, qIn, rec_coords, dIn, t_sub=options.subsampling_factor,
+                    space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                    freq_list=freqs, isic=options.isic, ws=weights,
+                    dft_sub=options.dft_subsampling_factor[1], f0=options.f0,
+                    multi_parameters=options.multi_parameters)
+    end
     # Remove PML and return gradient as Array
-    grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
-    return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
+    if isa(grad, Tuple)
+        grad_ = []
+        for i=1:length(grad)
+            push!(grad_, PhysicalParameter(remove_padding(grad[i], modelPy.padsizes; true_adjoint=options.sum_padding), modelPy.spacing, modelPy.origin))
+        end
+        return grad_
+    else
+        grad = remove_padding(grad, modelPy.padsizes; true_adjoint=options.sum_padding)
+        return PhysicalParameter(grad, modelPy.spacing, modelPy.origin)
+    end
 end

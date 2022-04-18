@@ -48,7 +48,7 @@ dt = srcGeometry.dt[1]
         println("Testing checkpointing")
         @timeit TIMEROUTPUT "Checkpointing" begin
                 opt = Options(sum_padding=true, free_surface=parsed_args["fs"], optimal_checkpointing=true,
-                        dt_comp=dt, f0=f0)
+                        f0=f0)
                 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -57,13 +57,8 @@ dt = srcGeometry.dt[1]
                 y_hat = J*dm
                 x_hat2 = adjoint(J)*y0
 
-                if ~parsed_args["viscoacoustic"]
-                    c = dot(y0, y_hat)
-                    d = dot(dm, x_hat2)
-                else
-                    c = dot(y0.data[1], y_hat.data[1])
-                    d = dot(dm.data, x_hat2.data)
-                end
+                c = dot(y0, y_hat)
+                d = dot(dm, x_hat2)
                 @printf(" <J x, y> : %2.5e, <x, J' y> : %2.5e, relative error : %2.5e \n", c, d, c/d - 1)
                 @test isapprox(c, d, rtol=1f-2)
 
@@ -75,7 +70,7 @@ dt = srcGeometry.dt[1]
         println("Testing DFT")
         @timeit TIMEROUTPUT "DFT" begin
                 opt = Options(sum_padding=true, free_surface=parsed_args["fs"], frequencies=[2.5, 4.5],
-                        dt_comp=dt, f0=f0)
+                        f0=f0)
                 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -96,7 +91,7 @@ dt = srcGeometry.dt[1]
         println("Testing subsampled in time DFT")
         @timeit TIMEROUTPUT "Subsampled DFT" begin
                 opt = Options(sum_padding=true, free_surface=parsed_args["fs"], frequencies=[2.5, 4.5],
-                        dft_subsampling_factor=4, dt_comp=dt, f0=f0)
+                        dft_subsampling_factor=4, f0=f0)
                 F = judiModeling(info, model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling

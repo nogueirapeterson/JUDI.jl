@@ -28,7 +28,8 @@ def forward_rec(model, src_coords, wavelet, rec_coords, space_order=8, f0=0.015)
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -57,7 +58,8 @@ def forward_rec_w(model, weight, wavelet, rec_coords, space_order=8, f0=0.015):
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -87,7 +89,8 @@ def forward_rec_wf(model, src_coords, wavelet, rec_coords, t_sub=1,
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -116,7 +119,8 @@ def forward_no_rec(model, src_coords, wavelet, space_order=8, f0=0.015):
         Source signature
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -143,7 +147,8 @@ def forward_wf_src(model, u, rec_coords, space_order=8, f0=0.015):
         Coordiantes of the receiver(s)
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -174,7 +179,8 @@ def forward_wf_src_norec(model, u, space_order=8, f0=0.015):
         Time-space dependent wavefield
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -210,7 +216,8 @@ def adjoint_rec(model, src_coords, rec_coords, data,
         Shot gather
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -240,7 +247,8 @@ def adjoint_w(model, rec_coords, data, wavelet, space_order=8, f0=0.015):
         Time signature of the forward source for stacking along time
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -268,7 +276,8 @@ def adjoint_no_rec(model, rec_coords, data, space_order=8, f0=0.015):
         Shot gather
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -296,7 +305,8 @@ def adjoint_wf_src(model, u, src_coords, space_order=8, f0=0.015):
         Source coordinates
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -328,7 +338,8 @@ def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
         Time-space dependent source
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
 
     Returns
     ----------
@@ -348,7 +359,7 @@ def adjoint_wf_src_norec(model, u, space_order=8, f0=0.015):
 
 # Linearized modeling ∂/∂m (Pr*F*Ps'*q)
 def born_rec(model, src_coords, wavelet, rec_coords,
-             space_order=8, isic=False, f0=0.015):
+             space_order=8, isic=False, f0=0.015, multi_parameters=None):
     """
     Linearized (Born) modeling of a point source for a model perturbation
     (square slowness) dm.
@@ -367,7 +378,10 @@ def born_rec(model, src_coords, wavelet, rec_coords,
         Spatial discretization order, defaults to 8
     isic : Bool
         Whether or not to use ISIC imaging condition
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
+    multi_parameters: Tuple
+        define whether the approach is single or multi parameters
 
     Returns
     ----------
@@ -375,13 +389,14 @@ def born_rec(model, src_coords, wavelet, rec_coords,
         Shot record
     """
     rec, _, _ = born(model, src_coords, rec_coords, wavelet, save=False,
-                     space_order=space_order, isic=isic, f0=f0)
+                     space_order=space_order, isic=isic, f0=f0,
+                     multi_parameters=multi_parameters)
     return rec.data
 
 
 # ∂/∂m (Pr*F*Pw'*w)
 def born_rec_w(model, weight, wavelet, rec_coords,
-               space_order=8, isic=False, f0=0.015):
+               space_order=8, isic=False, f0=0.015, multi_parameters=None):
     """
     Linearized (Born) modeling of an extended source for a model
     perturbation (square slowness) dm with an extended source
@@ -400,7 +415,10 @@ def born_rec_w(model, weight, wavelet, rec_coords,
         Spatial discretization order, defaults to 8
     isic : Bool
         Whether or not to use ISIC imaging condition
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
+    multi_parameters: Tuple
+        define whether the approach is single or multi parameters
 
     Returns
     ----------
@@ -408,12 +426,13 @@ def born_rec_w(model, weight, wavelet, rec_coords,
         Shot record
     """
     rec, _, _ = born(model, None, rec_coords, wavelet, save=False, ws=weight,
-                     space_order=space_order, isic=isic, f0=f0)
+                     space_order=space_order, isic=isic, f0=f0,
+                     multi_parameters=multi_parameters)
     return rec.data
 
 
 # Gradient wrappers
-def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015):
+def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015, multi_parameters=None):
     """
     FWI gradient, i.e adjoint Jacobian on a data residual.
 
@@ -429,20 +448,25 @@ def grad_fwi(model, recin, rec_coords, u, space_order=8, f0=0.015):
         Forward wavefield
     space_order: Int (optional)
         Spatial discretization order, defaults to 8
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
+    multi_parameters: Tuple
+        define whether the approach is single or multi parameters
 
     Returns
     ----------
     Array
         FWI gradient
     """
-    g, _ = gradient(model, recin, rec_coords, u, space_order=space_order, f0=f0)
+    g, _ = gradient(model, recin, rec_coords, u, space_order=space_order, f0=f0,
+                    multi_parameters=multi_parameters)
     return g.data
 
 
 def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
               checkpointing=False, n_checkpoints=None, t_sub=1,
-              maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None, f0=0.015):
+              maxmem=None, freq_list=[], dft_sub=None, isic=False, ws=None, f0=0.015,
+              multi_parameters=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Supports three modes:
@@ -478,7 +502,10 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         Whether or not to use ISIC imaging condition
     ws : Array
         Extended source spatial distribution
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
+    multi_parameters: Tuple
+        define whether the approach is single or multi parameters
 
     Returns
     ----------
@@ -490,23 +517,26 @@ def J_adjoint(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                                        recin, space_order=8,
                                        n_checkpoints=n_checkpoints, is_residual=True,
                                        maxmem=maxmem, isic=isic, ws=ws, t_sub=t_sub,
-                                       f0=f0)
+                                       f0=f0, multi_parameters=multi_parameters)
     elif freq_list is not None:
         grad = J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin,
                               space_order=space_order, is_residual=True, dft_sub=dft_sub,
                               freq_list=freq_list,
-                              isic=isic, ws=ws, t_sub=t_sub, f0=f0)
+                              isic=isic, ws=ws, t_sub=t_sub, f0=f0,
+                              multi_parameters=multi_parameters)
     else:
         grad = J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin,
                                   is_residual=True, isic=isic, ws=ws, t_sub=t_sub,
-                                  space_order=space_order, f0=f0)
+                                  space_order=space_order, f0=f0,
+                                  multi_parameters=multi_parameters)
 
     return grad
 
 
 def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                    freq_list=[], is_residual=False, return_obj=False, nlind=False,
-                   dft_sub=None, isic=False, ws=None, t_sub=1, born_fwd=False, f0=0.015):
+                   dft_sub=None, isic=False, ws=None, t_sub=1, born_fwd=False, f0=0.015,
+                   multi_parameters=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Frequency
@@ -541,7 +571,10 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     nlind: Bool
         Whether to remove the non linear data from the input data. This option is
         only available in combination with `born_fwd`
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
+    multi_parameters: Tuple
+        define whether the approach is single or multi parameters
 
     Returns
     ----------
@@ -550,7 +583,8 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
     """
     rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=False,
                                    space_order=space_order, freq_list=freq_list,
-                                   isic=isic, ws=ws, dft_sub=dft_sub, nlind=nlind, f0=f0)
+                                   isic=isic, ws=ws, dft_sub=dft_sub, nlind=nlind, f0=f0,
+                                   multi_parameters=multi_parameters)
     # Residual and gradient
     if not is_residual:
         if nlind:
@@ -558,16 +592,34 @@ def J_adjoint_freq(model, src_coords, wavelet, rec_coords, recin, space_order=8,
         else:
             recin[:] = rec.data[:] - recin[:]   # input is observed data
 
-    g, _ = gradient(model, recin, rec_coords, u, space_order=space_order, isic=isic,
-                    freq=freq_list, dft_sub=dft_sub, f0=f0)
+    grad, _ = gradient(model, recin, rec_coords, u, space_order=space_order, isic=isic,
+                       freq=freq_list, dft_sub=dft_sub, f0=f0,
+                       multi_parameters=multi_parameters)
+
+    if model.is_viscoacoustic and (isic is False) and (freq_list is None):
+        if multi_parameters is not None:
+            if multi_parameters[0] and multi_parameters[1]:
+                grad = (grad[0].data, grad[1].data)
+            elif multi_parameters[0]:
+                grad = grad[0].data
+            elif multi_parameters[1]:
+                grad = grad[1].data
+            else:
+                raise ValueError("No value found for multi_parameters")
+        else:
+            grad = grad[0].data
+    else:
+        grad = grad.data
+
     if return_obj:
-        return .5*model.critical_dt*np.linalg.norm(recin)**2, g.data
-    return g.data
+        return .5*model.critical_dt*np.linalg.norm(recin)**2, grad
+    return grad
 
 
 def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                        is_residual=False, return_obj=False, born_fwd=False,
-                       isic=False, ws=None, t_sub=1, nlind=False, f0=0.015):
+                       isic=False, ws=None, t_sub=1, nlind=False, f0=0.015,
+                       multi_parameters=None):
     """
     Adjoint Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with standard
@@ -598,7 +650,10 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
     nlind: Bool
         Whether to remove the non linear data from the input data. This option is
         only available in combination with `born_fwd`
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
+    multi_parameters: Tuple
+        define whether the approach is single or multi parameters
 
     Returns
     ----------
@@ -607,7 +662,8 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
     """
     rec, u, _ = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet, save=True,
                                    ws=ws, space_order=space_order,
-                                   isic=isic, t_sub=t_sub, nlind=nlind, f0=f0)
+                                   isic=isic, t_sub=t_sub, nlind=nlind, f0=f0,
+                                   multi_parameters=multi_parameters)
     # Residual and gradient
     if not is_residual:
         if nlind:
@@ -615,17 +671,33 @@ def J_adjoint_standard(model, src_coords, wavelet, rec_coords, recin, space_orde
         else:
             recin[:] = rec.data[:] - recin[:]   # input is observed data
 
-    g, _ = gradient(model, recin, rec_coords, u, space_order=space_order, isic=isic,
-                    f0=f0)
+    grad, _ = gradient(model, recin, rec_coords, u, space_order=space_order, isic=isic,
+                       f0=f0, multi_parameters=multi_parameters)
+
+    if model.is_viscoacoustic and (isic is False):
+        if multi_parameters is not None:
+            if multi_parameters[0] and multi_parameters[1]:
+                grad = (grad[0].data, grad[1].data)
+            elif multi_parameters[0]:
+                grad = grad[0].data
+            elif multi_parameters[1]:
+                grad = grad[1].data
+            else:
+                raise ValueError("No value found for multi_parameters")
+        else:
+            grad = grad[0].data
+    else:
+        grad = grad.data
+
     if return_obj:
-        return .5*model.critical_dt*np.linalg.norm(recin)**2, g.data
-    return g.data
+        return .5*model.critical_dt*np.linalg.norm(recin)**2, grad
+    return grad
 
 
 def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space_order=8,
                             is_residual=False, n_checkpoints=None, born_fwd=False,
                             maxmem=None, return_obj=False, isic=False, ws=None,
-                            t_sub=1, nlind=False, f0=0.015):
+                            t_sub=1, nlind=False, f0=0.015, multi_parameters=None):
     """
     Jacobian (adjoint fo born modeling operator) operator on a shot record
     as a source (i.e data residual). Outputs the gradient with Checkpointing.
@@ -661,7 +733,10 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     nlind: Bool
         Whether to remove the non linear data from the input data. This option is
         only available in combination with `born_fwd`
-    f0: peak frequency
+    f0: Float (optional)
+        peak frequency
+    multi_parameters: Tuple
+        define whether the approach is single or multi parameters
 
     Returns
     ----------
@@ -671,9 +746,11 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
     # Optimal checkpointing
     op_f, u, rec_g = op_fwd_J[born_fwd](model, src_coords, rec_coords, wavelet,
                                         space_order=space_order, return_op=True,
-                                        isic=isic, nlind=nlind, ws=ws, f0=f0)
-    op, g, v = gradient(model, recin, rec_coords, u, space_order=space_order,
-                        return_op=True, isic=isic, f0=f0)
+                                        isic=isic, nlind=nlind, ws=ws, f0=f0,
+                                        multi_parameters=multi_parameters)
+    op, grad, v = gradient(model, recin, rec_coords, u, space_order=space_order,
+                           return_op=True, isic=isic, f0=f0,
+                           multi_parameters=multi_parameters)
 
     nt = wavelet.shape[0]
     rec = Receiver(name='rec', grid=model.grid, ntime=nt, coordinates=rec_coords)
@@ -710,9 +787,24 @@ def J_adjoint_checkpointing(model, src_coords, wavelet, rec_coords, recin, space
 
     wrp.apply_reverse()
 
+    if model.is_viscoacoustic and (isic is False):
+        if multi_parameters is not None:
+            if multi_parameters[0] and multi_parameters[1]:
+                grad = (grad[0].data, grad[1].data)
+            elif multi_parameters[0]:
+                grad = grad[0].data
+            elif multi_parameters[1]:
+                grad = grad[1].data
+            else:
+                raise ValueError("No value found for multi_parameters")
+        else:
+            grad = grad[0].data
+    else:
+        grad = grad.data
+
     if return_obj:
-        return .5*model.critical_dt*norm(rec)**2, g.data
-    return g.data
+        return .5*model.critical_dt*norm(rec)**2, grad
+    return grad
 
 
 op_fwd_J = {False: forward, True: born}
@@ -720,7 +812,8 @@ op_fwd_J = {False: forward, True: born}
 
 def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
              isic=False, ws=None, t_sub=1, grad="m", grad_corr=False,
-             alpha_op=False, w_fun=None, eps=0, freq_list=[], wfilt=None, f0=0.015):
+             alpha_op=False, w_fun=None, eps=0, freq_list=[], wfilt=None, f0=0.015,
+             multi_parameters=None):
     """
     Time domain wavefield reconstruction inversion wrapper
     """
@@ -765,7 +858,8 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
         w = c1*α/w**2 if w is not None else c1*α
         Q = wf_as_src(v, w=w, freq_list=freq_list)
         rcv, gradm, _ = forward_grad(model, src_coords, rec_coords, c2*wfilt,
-                                     freq=freq_list, q=Q, v=v, f0=f0)
+                                     freq=freq_list, q=Q, v=v, f0=f0,
+                                     multi_parameters=multi_parameters)
 
         # Compute gradient wrt y
         if grad_corr or grad in ["all", "y"]:
@@ -777,7 +871,8 @@ def wri_func(model, src_coords, wavelet, rec_coords, recin, yin, space_order=8,
         if not grad_corr:
             gradm = gradm.data
         else:
-            gradm_corr, _ = gradient(model, grady, rec_coords, u0, f0=f0)
+            gradm_corr, _ = gradient(model, grady, rec_coords, u0, f0=f0,
+                                     multi_parameters=multi_parameters)
             # Reduced gradient post-processing
             gradm = gradm.data + gradm_corr.data
 

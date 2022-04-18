@@ -88,6 +88,16 @@ function *(A::judiAbstractJacobian{ADDT,ARDT}, v::AbstractVector{Float32}) where
     return V
 end
 
+# *(judiJacobian,vec)
+function *(A::judiAbstractJacobian{ADDT,ARDT}, v::Tuple{AbstractVector{Float32},AbstractVector{Float32}}) where {ADDT,ARDT}
+    for i=1:length(v)
+        A.n == size(v[i],1) || throw(judiJacobianException("Shape mismatch: A:$(size(A)), v: $(size(v[i]))"))
+    end
+    V = A.fop(A, v)
+    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobian,vec):",A.name,typeof(A),eltype(V)]," / "))
+    return V
+end
+
 *(A::judiAbstractJacobian{ADDT,ARDT}, v::AbstractMatrix{vDT}) where {ADDT,ARDT,vDT} = *(A, vec(v))
 *(A::judiAbstractJacobian{ADDT,ARDT}, v::AbstractVector{Float64}) where {ADDT,ARDT} = *(A, jo_convert(Float32, v, false))
 
@@ -97,7 +107,13 @@ function *(A::judiAbstractJacobian{ADDT,ARDT}, v::judiVector{vDT, AT}) where {AD
     jo_check_type_match(ADDT,vDT,join(["DDT for *(judiJacobian,judiVector):",A.name,typeof(A),vDT]," / "))
     compareGeometry(A.recGeometry,v.geometry) == true || throw(judiJacobianException("Geometry mismatch"))
     V = A.fop(A, v)
-    jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobian,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+    if isa(V, Array)
+        for i=1:length(V)
+            jo_check_type_match(ARDT,eltype(V[i]),join(["RDT from *(judiJacobian,vec):",A.name,typeof(A),eltype(V[i])]," / "))
+        end
+    else
+        jo_check_type_match(ARDT,eltype(V),join(["RDT from *(judiJacobian,judiVector):",A.name,typeof(A),eltype(V)]," / "))
+    end
     return V
 end
 

@@ -19,7 +19,7 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
 
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source fwi_objective"
-    @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"    
+    @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"
 
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
@@ -50,19 +50,22 @@ function fwi_objective(model_full::Model, source::judiVector, dObs::judiVector, 
         argout1, argout2 = pycall(ac."J_adjoint_checkpointing", Tuple{Float32, PyArray},
                                   modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
-                                  t_sub=options.subsampling_factor, space_order=options.space_order, f0=options.f0)
+                                  t_sub=options.subsampling_factor, space_order=options.space_order, f0=options.f0,
+                                  multi_parameters=options.multi_parameters)
     elseif ~isempty(options.frequencies)
         argout1, argout2 = pycall(ac."J_adjoint_freq", Tuple{Float32,  PyArray},
                                   modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true, isic=options.isic,
                                   freq_list=options.frequencies, t_sub=options.subsampling_factor,
-                                  space_order=options.space_order, f0=options.f0)
+                                  space_order=options.space_order, f0=options.f0,
+                                  multi_parameters=options.multi_parameters)
     else
         argout1, argout2 = pycall(ac."J_adjoint_standard", Tuple{Float32, PyArray},
                                   modelPy, src_coords, qIn,
                                   rec_coords, dObserved, is_residual=false, return_obj=true,
                                   t_sub=options.subsampling_factor, space_order=options.space_order,
-                                  isic=options.isic, f0=options.f0)
+                                  isic=options.isic, f0=options.f0,
+                                  multi_parameters=options.multi_parameters)
     end
     argout2 = remove_padding(argout2, modelPy.padsizes; true_adjoint=options.sum_padding)
     if options.limit_m==true

@@ -16,7 +16,7 @@ fs =  parsed_args["fs"]
 
 ### Model
 model, model0, dm = setup_model(parsed_args["tti"], parsed_args["viscoacoustic"], 4)
-q, srcGeometry, recGeometry, info = setup_geom(model)
+q, srcGeometry, recGeometry, info, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
 ###################################################################################################
@@ -31,7 +31,7 @@ dt = srcGeometry.dt[1]
 	modelH = deepcopy(model0)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=parsed_args["fs"])
+	opt = Options(sum_padding=true, free_surface=parsed_args["fs"], f0=f0)
 	F = judiModeling(info, model, srcGeometry, recGeometry; options=opt)
 	d = F*q
 

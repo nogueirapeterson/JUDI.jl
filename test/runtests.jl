@@ -34,8 +34,8 @@ base = ["test_abstract_vectors.jl",
 devito = ["test_linearity.jl",
           "test_adjoint.jl",
           "test_all_options.jl",
-          "test_jacobian.jl",
           "test_jacobian_extended.jl",
+          "test_jacobian.jl",
           "test_gradient_fwi.jl",
           "test_gradient_lsrtm.jl",
           "test_multi_exp.jl"]
@@ -123,7 +123,7 @@ if GROUP == "VISCO_AC_OP" || GROUP == "All"
     println("JUDI Viscoacoustic operators tests")
     # Viscoacoustic tests
     push!(Base.ARGS, "--viscoacoustic")
-    visco = ["test_gradient_fwi.jl", "test_gradient_lsrtm.jl", "test_jacobian_extended.jl"]
+    visco = ["test_jacobian_extended.jl", "test_jacobian.jl", "test_gradient_fwi.jl"]
     for t=devito
         if (~any(x->x==t, visco))
             @time include(t)
@@ -133,4 +133,3 @@ if GROUP == "VISCO_AC_OP" || GROUP == "All"
 end
 
 show(TIMEROUTPUT; compact=true, sortby=:firstexec)
-

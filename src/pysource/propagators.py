@@ -115,7 +115,8 @@ def adjoint(model, y, src_coords, rcv_coords, space_order=8, q=0, dft_sub=None,
 
 
 def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
-             w=None, freq=None, dft_sub=None, isic=False, f0=0.015):
+             w=None, freq=None, dft_sub=None, isic=False, f0=0.015,
+             multi_parameters=None):
     """
     Low level propagator, to be used through `interface.py`
     Compute the action of the adjoint Jacobian onto a residual J'* δ d.
@@ -130,9 +131,15 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
     geom_expr, _, _ = src_rec(model, v, src_coords=rcv_coords,
                               wavelet=residual, fw=False)
 
-    # Setup gradient wrt m
-    gradm = Function(name="gradm", grid=model.grid)
-    g_expr = grad_expr(gradm, u, v, model, w=w, freq=freq, dft_sub=dft_sub, isic=isic)
+    if model.is_viscoacoustic and (isic is False) and (freq is None):
+        gradkappa = Function(name="gradkappa", grid=model.grid)
+        gradtau = Function(name="gradtau", grid=model.grid)
+        gradm = (gradkappa, gradtau)
+    else:
+        # Setup gradient wrt m
+        gradm = Function(name="gradm", grid=model.grid)
+    g_expr = grad_expr(gradm, u, v, model, w=w, freq=freq, dft_sub=dft_sub, isic=isic,
+                       f0=f0, multi_parameters=multi_parameters)
 
     # Create operator and run
     subs = model.spacing_map
@@ -157,7 +164,7 @@ def gradient(model, residual, rcv_coords, u, return_op=False, space_order=8,
 
 def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
          q=None, return_op=False, isic=False, freq_list=None, dft_sub=None,
-         ws=None, t_sub=1, nlind=False, f0=0.015):
+         ws=None, t_sub=1, nlind=False, f0=0.015, multi_parameters=None):
     """
     Low level propagator, to be used through `interface.py`
     Compute linearized wavefield U = J(m)* δ m
@@ -177,10 +184,13 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
     # Set up PDE expression and rearrange
     pde = wave_kernel(model, u, q=q, f0=f0)
-    if model.dm == 0:
+
+    if (multi_parameters is None and model.dm == 0) or \
+       (multi_parameters is not None and (model.dkappa == 0 and model.dtau == 0)):
         pdel = []
     else:
-        pdel = wave_kernel(model, ul, q=lin_src(model, u, isic=isic), f0=f0)
+        q = lin_src(model, u, isic=isic, f0=f0, multi_parameters=multi_parameters)
+        pdel = wave_kernel(model, ul, q=q, f0=f0)
 
     # Setup source and receiver
     geom_expr, _, rcvnl = src_rec(model, u, rec_coords=rcv_coords if nlind else None,
@@ -208,7 +218,8 @@ def born(model, src_coords, rcv_coords, wavelet, space_order=8, save=False,
 
 # Forward propagation
 def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
-                 q=None, ws=None, isic=False, w=None, freq=None, f0=0.015, **kwargs):
+                 q=None, ws=None, isic=False, w=None, freq=None, f0=0.015,
+                 multi_parameters=None, **kwargs):
     """
     Low level propagator, to be used through `interface.py`
     Compute forward wavefield u = A(m)^{-1}*f and related quantities (u(xrcv))
@@ -230,9 +241,15 @@ def forward_grad(model, src_coords, rcv_coords, wavelet, v, space_order=8,
     geom_expr, _, rcv = src_rec(model, u, src_coords=src_coords, nt=nt,
                                 rec_coords=rcv_coords, wavelet=wavelet)
 
-    # Setup gradient wrt m
-    gradm = Function(name="gradm", grid=model.grid)
-    g_expr = grad_expr(gradm, v, u, model, w=w, isic=isic, freq=freq)
+    if model.is_viscoacoustic and (isic is False) and (freq is None):
+        gradkappa = Function(name="gradkappa", grid=model.grid)
+        gradtau = Function(name="gradtau", grid=model.grid)
+        gradm = (gradkappa, gradtau)
+    else:
+        # Setup gradient wrt m
+        gradm = Function(name="gradm", grid=model.grid)
+    g_expr = grad_expr(gradm, u, v, model, w=w, freq=freq, isic=isic, f0=f0,
+                       multi_parameters=multi_parameters)
 
     # Create operator and run
     subs = model.spacing_map
