@@ -29,6 +29,7 @@ const tti = parsed_args["tti"]
 const fs =  parsed_args["fs"]
 const nw = parsed_args["parallel"]
 const viscoacoustic = parsed_args["viscoacoustic"]
+const time_order = parsed_args["time_order"]
 
 
 base = ["test_geometry.jl",
