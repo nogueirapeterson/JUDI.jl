@@ -255,17 +255,20 @@ class Model(GenericModel):
             self.abc_type = True
             if multi_parameters is None:
                 self.dkappa = self._gen_phys_param(dm, 'dkappa', space_order)
+                print("multiparameter is none")
             else:
                 if multi_parameters[0]:
                     dkappa = dm[0] if (isinstance(dm, list) or
                                        isinstance(dm, tuple)) else dm
                     self.dkappa = self._gen_phys_param(dkappa, 'dkappa', space_order)
+                    print("multiparameter dkappa")
                 else:
                     self.dkappa = None
                 if multi_parameters[1]:
                     dtau = dm[1] if (isinstance(dm, list) or
                                      isinstance(dm, tuple)) else dm
                     self.dtau = self._gen_phys_param(dtau, 'dtau', space_order)
+                    print("multiparameter dtau")
                 else:
                     self.dtau = None
         else:
