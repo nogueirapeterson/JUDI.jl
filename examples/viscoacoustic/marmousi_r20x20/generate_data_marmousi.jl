@@ -1,4 +1,4 @@
-# Generate observed Born data for Gas chimney examples
+# Generate observed Born data from Marmousi model
 # Author: nogueirapeterson@gmail.com
 # Date: March 2022
 #
