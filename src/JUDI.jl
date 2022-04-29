@@ -15,6 +15,7 @@ using Distributed
 using DSP, FFTW, Dierckx
 using PyCall
 using JOLI, SegyIO
+using WaveFD, Statistics
 
 # Import Base functions to dispatch on JUDI types
 import Base.depwarn
