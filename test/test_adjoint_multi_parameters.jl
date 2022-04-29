@@ -4,7 +4,9 @@
 #
 
 using Distributed
+using ArgParse, Test, Printf
 
+include("utils.jl")
 parsed_args = parse_commandline()
 
 nlayer = parsed_args["nlayer"]
