@@ -13,12 +13,12 @@ srcGeometry2.xloc[:] .= .9*srcGeometry2.xloc[:]
 srcGeometry2.zloc[:] .= .9*srcGeometry2.zloc[:]
 dt = srcGeometry1.dt[1]
 
-opt = Options(free_surface=fs, f0=f0)
+opt = Options(free_surface=fs, time_order=time_order, f0=f0)
 ftol = 5f-5
 
 ####################### Modeling operators ##########################################
 
-@testset "Linearity test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
+@testset "Linearity test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs) and time_order $(time_order)" begin
     @timeit TIMEROUTPUT "Linearity" begin
         # Modeling operators
         Pr = judiProjection(recGeometry)
@@ -142,7 +142,7 @@ if parsed_args["tti"]
     ftol = 5f-4
 end
 
-@testset "Extended source linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "Extended source linearity test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and time_order $(time_order)" begin
     @timeit TIMEROUTPUT "Extended source Linearity" begin
         # Modeling operators
         Pr = judiProjection(recGeometry)

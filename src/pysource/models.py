@@ -194,11 +194,12 @@ class Model(object):
         either density or inverse density is setup.
         """
         if np.max(rho)/np.min(rho) > 10:
-            self.rho = self._gen_phys_param(rho, 'rho', so)
+            self.rho = self._gen_phys_param(rho, 'rho', so, is_param=True)
             self.irho = 1 / self.rho
         else:
             self.irho = self._gen_phys_param(rho, 'irho', so,
-                                             func=lambda x: np.reciprocal(x))
+                                             func=lambda x: np.reciprocal(x),
+                                             is_param=True)
 
     @property
     def padsizes(self):

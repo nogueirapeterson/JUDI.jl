@@ -6,7 +6,7 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
 
     # assert this is for single source LSRTM
     @assert source.nsrc == 1 "Multiple sources are used in a single-source fwi_objective"
-    @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"    
+    @assert dObs.nsrc == 1 "Multiple-source data is used in a single-source fwi_objective"
 
     # Load full geometry for out-of-core geometry containers
     dObs.geometry = Geometry(dObs.geometry)
@@ -35,7 +35,8 @@ function multi_src_fg(model_full::Model, source::judiVector, dObs::judiVector, d
     length(options.frequencies) == 0 ? freqs = nothing : freqs = options.frequencies
     argout1, argout2 = pycall(ac."J_adjoint", Tuple{Float32, PyArray}, modelPy,
                   src_coords, qIn, rec_coords, dObserved, t_sub=options.subsampling_factor,
-                  space_order=options.space_order, checkpointing=options.optimal_checkpointing,
+                  space_order=options.space_order, time_order=options.time_order,
+                  checkpointing=options.optimal_checkpointing,
                   freq_list=freqs, isic=options.isic, is_residual=false, born_fwd=lin,
                   dft_sub=options.dft_subsampling_factor[1], f0=options.f0, return_obj=true)
 
@@ -59,7 +60,7 @@ get_nexp(x) = 1
 for T in [judiVector, Model, judiWeights, judiWavefield, PhysicalParameter, Vector{Float32}]
     @eval get_nexp(v::Vector{<:$T}) = length(v)
     @eval get_nexp(v::Tuple{N, <:$T}) where N = length(v)
-end   
+end
 
 # Filter arguments for given task
 """

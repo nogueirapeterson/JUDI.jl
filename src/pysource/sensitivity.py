@@ -18,7 +18,8 @@ def func_name(freq=None, isic=False):
         return 'isic_freq' if isic else 'corr_freq'
 
 
-def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
+def grad_expr(gradm, u, v, model, time_order=2, w=None, freq=None, dft_sub=None,
+              isic=False):
     """
     Gradient update stencil
 
@@ -30,6 +31,8 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
         Adjoint wavefield (tuple of fields for TTI)
     model: Model
         Model structure
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     w: Float or Expr (optional)
         Weight for the gradient expression (default=1)
     freq: Array
@@ -40,7 +43,8 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
         Whether or not to use inverse scattering imaging condition (not supported yet)
     """
     ic_func = ic_dict[func_name(freq=freq, isic=isic)]
-    expr = ic_func(as_tuple(u), as_tuple(v), model, freq=freq, factor=dft_sub, w=w)
+    expr = ic_func(as_tuple(u), as_tuple(v), model, time_order=time_order, freq=freq,
+                   factor=dft_sub, w=w)
     if model.fs:
         eq_g = [Eq(gradm, gradm - expr, subdomain=model.grid.subdomains['nofsdomain'])]
         eq_g += freesurface(model, eq_g)
@@ -49,7 +53,7 @@ def grad_expr(gradm, u, v, model, w=None, freq=None, dft_sub=None, isic=False):
     return eq_g
 
 
-def crosscorr_time(u, v, model, **kwargs):
+def crosscorr_time(u, v, model, time_order=2, **kwargs):
     """
     Cross correlation of forward and adjoint wavefield
 
@@ -61,9 +65,14 @@ def crosscorr_time(u, v, model, **kwargs):
         Adjoint wavefield (tuple of fields for TTI)
     model: Model
         Model structure
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     """
     w = kwargs.get('w') or u[0].indices[0].spacing * model.irho
-    return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
+    if time_order == 1:
+        return w * u[0].dt * v[0]
+    else:
+        return w * sum(vv.dt2 * uu for uu, vv in zip(u, v))
 
 
 def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
@@ -103,7 +112,7 @@ def crosscorr_freq(u, v, model, freq=None, dft_sub=None, **kwargs):
     return expr
 
 
-def isic_time(u, v, model, **kwargs):
+def isic_time(u, v, model, time_order=2, **kwargs):
     """
     Inverse scattering imaging condition
 
@@ -115,10 +124,16 @@ def isic_time(u, v, model, **kwargs):
         Adjoint wavefield (tuple of fields for TTI)
     model: Model
         Model structure
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     """
     w = u[0].indices[0].spacing * model.irho
-    return w * sum(uu * vv.dt2 * model.m + inner_grad(uu, vv)
-                   for uu, vv in zip(u, v))
+    if time_order == 1:
+        return w * sum(uu.dt * vv * model.m + inner_grad(uu, vv)
+                       for uu, vv in zip(u, v))
+    else:
+        return w * sum(uu * vv.dt2 * model.m + inner_grad(uu, vv)
+                       for uu, vv in zip(u, v))
 
 
 def isic_freq(u, v, model, **kwargs):
@@ -157,7 +172,7 @@ def isic_freq(u, v, model, **kwargs):
     return expr
 
 
-def lin_src(model, u, isic=False):
+def lin_src(model, u, time_order=2, isic=False):
     """
     Source for linearized modeling
 
@@ -167,12 +182,14 @@ def lin_src(model, u, isic=False):
         Forward wavefield (tuple of fields for TTI or dft)
     model: Model
         Model containing the perturbation dm
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     """
     ls_func = ls_dict[func_name(isic=isic)]
-    return ls_func(model, as_tuple(u))
+    return ls_func(model, as_tuple(u), time_order=time_order)
 
 
-def basic_src(model, u, **kwargs):
+def basic_src(model, u, time_order=2, **kwargs):
     """
     Basic source for linearized modeling
 
@@ -182,14 +199,16 @@ def basic_src(model, u, **kwargs):
         Forward wavefield (tuple of fields for TTI or dft)
     model: Model
         Model containing the perturbation dm
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     """
     w = -model.dm * model.irho
     if model.is_tti:
         return (w * u[0].dt2, w * u[1].dt2)
-    return w * u[0].dt2
+    return w * (u[0].dt if time_order == 1 else u[0].dt2)
 
 
-def isic_src(model, u, **kwargs):
+def isic_src(model, u, time_order=2, **kwargs):
     """
     ISIC source for linearized modeling
 
@@ -199,12 +218,14 @@ def isic_src(model, u, **kwargs):
         Forward wavefield (tuple of fields for TTI or dft)
     model: Model
         Model containing the perturbation dm
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     """
     m, dm, irho = model.m, model.dm, model.irho
     dus = []
     for uu in u:
         du_aux = divs(dm * irho * grads(uu, so_fact=2), so_fact=2)
-        dus.append(dm * irho * uu.dt2 * m - du_aux)
+        dus.append(dm * irho * (uu.dt if time_order == 1 else uu.dt2) * m - du_aux)
     if model.is_tti:
         return (-dus[0], -dus[1])
     return -dus[0]

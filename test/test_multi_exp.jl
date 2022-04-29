@@ -44,7 +44,7 @@ srcGeometry2 = subsample(srcGeometry,[2,3])
 recGeometry1 = subsample(recGeometry,[1,4])
 recGeometry2 = subsample(recGeometry,[2,3])
 
-opt = Options(sum_padding=true, free_surface=fs, f0=f0, dt_comp=dt)
+opt = Options(sum_padding=true, free_surface=fs, f0=f0, time_order=time_order)
 F1 = judiModeling(model, srcGeometry1, recGeometry1; options=opt)
 F2 = judiModeling(model, srcGeometry2, recGeometry2; options=opt)
 
@@ -80,7 +80,7 @@ dm2 = 2f0*circshift(dm, 30)
     end
 end
 
-@testset "FWI/LSRTM objective multi-level parallelization test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "FWI/LSRTM objective multi-level parallelization test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and time_order $(time_order)" begin
     @timeit TIMEROUTPUT "Multi FWI/LSRTM" begin
         ftol = 1f-5
 

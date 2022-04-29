@@ -5,7 +5,7 @@
 # Mathias Louboutin, mlouboutin3@gatech.edu
 # Updated July 2020
 
-export ricker_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
+export ricker_wavelet, dgauss_wavelet, get_computational_nt, calculate_dt, setup_grid, setup_3D_grid
 export convertToCell, limit_model_to_receiver_area, extend_gradient, remove_out_of_bounds_receivers
 export time_resample, remove_padding, subsample, process_input_data
 export generate_distribution, select_frequencies
@@ -325,6 +325,26 @@ function ricker_wavelet(tmax, dt, f0; t0=nothing)
 end
 
 """
+    source(tmax, dt, f0)
+
+Create seismic DGauss wavelet of length `tmax` (in milliseconds) with sampling interval `dt` (in milliseonds)\\
+and central frequency `f0` (in kHz).
+
+"""
+function dgauss_wavelet(tmax, dt, f0; t0=nothing)
+    t = collect(0.0:dt:tmax);
+    t = t ./ 1000.
+    f1 = f0 .* 1000
+    wav = WaveletCausalRicker(a = 1.0, f = f1, integrate = true);
+    wRickerInt = get(wav, t .- mean(t));
+    nt = Int(tmax ÷ dt) + 1;
+    q = zeros(Float32,nt,1);
+    wRickerInt = -1 .* wRickerInt;
+    q[:,1] = wRickerInt;
+    return q
+end
+
+"""
     calculate_dt(model; dt=nothing)
 
 Compute the computational time step based on the CFL condition and physical parameters
@@ -517,7 +537,7 @@ end
 """
     time_resample(data, dt_in, dt_new)
 
-Resample the input data with sinc interpolation from the current time sampling dt_in to the 
+Resample the input data with sinc interpolation from the current time sampling dt_in to the
 new time sampling `dt_new`.
 
 Parameters

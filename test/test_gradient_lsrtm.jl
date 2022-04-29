@@ -14,10 +14,14 @@ model, model0, dm = setup_model(tti, viscoacoustic, 4)
 q, srcGeometry, recGeometry, f0 = setup_geom(model)
 dt = srcGeometry.dt[1]
 
-opt = Options(sum_padding=true, free_surface=fs, f0=f0)
+opt = Options(sum_padding=true, free_surface=fs, time_order=time_order, f0=f0)
 F = judiModeling(model, srcGeometry, recGeometry; options=opt)
 F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 J = judiJacobian(F0, q)
+
+nt = get_computational_nt(srcGeometry, recGeometry, model0; dt=dt)
+println("NT")
+println(nt)
 
 # Observed data
 dobs = F*q
@@ -25,7 +29,7 @@ dobs0 = F0*q
 
 ###################################################################################################
 
-@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" for nlind=[true, false]
+@testset "LSRTM gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs) and time_order $(time_order)" for nlind=[false]
 	@timeit TIMEROUTPUT "LSRTM gradient test, nlind=$(nlind)" begin
 		# Gradient test
 		ftol = (tti && fs) ? 1f-1 : 5f-2
@@ -46,6 +50,7 @@ dobs0 = F0*q
 		for j=1:maxiter
 			dmloc = dm + h*dmp
 			# LS-RTM gradient and function falue for m0 + h*dm
+			println("ENTROU AQUI 3")
 			Jm = .5f0 * norm(J*dmloc - dD)^2
 			@printf("h = %2.2e, J0 = %2.2e, Jm = %2.2e \n", h, Jm0, Jm)
 			# Check convergence
@@ -80,31 +85,31 @@ dobs0 = F0*q
 end
 
 
-# Test if lsrtm_objective produces the same value/gradient as is done by the correct algebra
-@testset "LSRTM gradient linear algebra test with $(nlayer) layers, tti $(tti), freesurface $(fs)" begin
-	# Draw a random case to avoid long CI.
-	isic, dft, optchk = rand([true, false], 3)
-	optchk = optchk && !dft
-    @timeit TIMEROUTPUT "LSRTM validity (isic=$(isic), checkpointing=$(optchk), dft=$(dft))" begin
-		ftol = fs ? 1f-3 : 5f-4
-		freq = dft ? [[2.5, 4.5],[3.5, 5.5],[10.0, 15.0], [30.0, 32.0]] : []
-		J.options.free_surface = fs
-		J.options.isic = isic
-		J.options.optimal_checkpointing = optchk
-		J.options.frequencies = freq
+# # Test if lsrtm_objective produces the same value/gradient as is done by the correct algebra
+# @testset "LSRTM gradient linear algebra test with $(nlayer) layers, tti $(tti), freesurface $(fs), time_order $(time_order)" begin
+# 	# Draw a random case to avoid long CI.
+# 	isic, dft, optchk = rand([true, false], 3)
+# 	optchk = optchk && !dft
+#     @timeit TIMEROUTPUT "LSRTM validity (isic=$(isic), checkpointing=$(optchk), dft=$(dft))" begin
+# 		ftol = fs ? 1f-3 : 5f-4
+# 		freq = dft ? [[2.5, 4.5],[3.5, 5.5],[10.0, 15.0], [30.0, 32.0]] : []
+# 		J.options.free_surface = fs
+# 		J.options.isic = isic
+# 		J.options.optimal_checkpointing = optchk
+# 		J.options.frequencies = freq
 
-		dm1 = 2f0*circshift(dm, 10)
-		d_res = dobs0 + J*dm1 - dobs
-		Jm0_1 = 0.5f0 * norm(d_res)^2f0
-		grad_1 = J'*d_res
+# 		dm1 = 2f0*circshift(dm, 10)
+# 		d_res = dobs0 + J*dm1 - dobs
+# 		Jm0_1 = 0.5f0 * norm(d_res)^2f0
+# 		grad_1 = J'*d_res
 
-		opt = J.options
-		Jm0, grad = lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
-		Jm01, grad1 = lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
+# 		opt = J.options
+# 		Jm0, grad = lsrtm_objective(model0, q, dobs, dm1; options=opt, nlind=true)
+# 		Jm01, grad1 = lsrtm_objective(model0, q, dobs-dobs0, dm1; options=opt, nlind=false)
 
-		@test isapprox(grad, grad_1; rtol=ftol)
-		@test isapprox(Jm0, Jm0_1; rtol=ftol)
-		@test isapprox(grad, grad1; rtol=ftol)
-		@test isapprox(Jm0, Jm01; rtol=ftol)
-	end
-end
+# 		@test isapprox(grad, grad_1; rtol=ftol)
+# 		@test isapprox(Jm0, Jm0_1; rtol=ftol)
+# 		@test isapprox(grad, grad1; rtol=ftol)
+# 		@test isapprox(Jm0, Jm01; rtol=ftol)
+# 	end
+# end

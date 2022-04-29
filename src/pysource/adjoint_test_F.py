@@ -18,10 +18,13 @@ parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
                     help="Number of layers in model")
 parser.add_argument('-so', dest='space_order', default=8, type=int,
                     help="Spatial discretization order")
+parser.add_argument('-to', dest='time_order', default=2, type=int,
+                    help="Time discretization order")
 args = parser.parse_args()
 is_tti = args.tti
 is_viscoacoustic = args.viscoacoustic
 so = args.space_order
+to = args.time_order
 
 dtype = np.float32
 
@@ -74,10 +77,11 @@ rec_t.coordinates.data[:, 1] = 20.
 
 # Test data and source
 d_hat, u1, _ = forward(model, src1.coordinates.data, rec_t.coordinates.data, src1.data,
-                       f0=f1)
+                       time_order=to, f0=f1)
 
 # Adjoint
-q0, _, _ = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data, f0=f1)
+q0, _, _ = adjoint(model, d_hat, src1.coordinates.data, rec_t.coordinates.data,
+                   time_order=to, f0=f1)
 
 # Adjoint test
 a = inner(d_hat, d_hat)

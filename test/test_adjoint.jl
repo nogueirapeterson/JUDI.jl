@@ -58,9 +58,10 @@ test_adjoint(adj::Bool, last::Bool) = (adj || last) ? (@test adj) : (@test_skip 
 
 ###################################################################################################
 # Modeling operators
-@testset "Adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
+@testset "Adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs) and time_order $(time_order)" begin
     @timeit TIMEROUTPUT "Adjoint" begin
-        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
+        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"],
+                time_order=time_order, f0=f0)
         F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
         # Nonlinear modeling
@@ -82,9 +83,10 @@ test_adjoint(adj::Bool, last::Bool) = (adj || last) ? (@test adj) : (@test_skip 
 end
 ###################################################################################################
 # Extended source modeling
-@testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
+@testset "Extended source adjoint test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs) and time_order $(time_order)" begin
     @timeit TIMEROUTPUT "Extended source adjoint" begin
-        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"], f0=f0)
+        opt = Options(sum_padding=true, dt_comp=dt, free_surface=parsed_args["fs"],
+                time_order=time_order, f0=f0)
         F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
         Pr = judiProjection(recGeometry)
         Fw = judiModeling(model0; options=opt)

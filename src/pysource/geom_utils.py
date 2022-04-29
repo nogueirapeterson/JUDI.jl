@@ -3,7 +3,8 @@ from devito.tools import as_tuple
 from sources import *
 
 
-def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None):
+def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, nt=None,
+            time_order=2):
     """
     Generates the source injection and receiver interpolation.
     This function is fully abstracted and does not care whether this is a
@@ -31,6 +32,8 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
         Whether the direction is forward or backward in time
     nt: int
         Number of time steps
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     """
     m, irho = model.m, model.irho
     m = m * irho
@@ -47,7 +50,8 @@ def src_rec(model, u, src_coords=None, rec_coords=None, wavelet=None, fw=True, n
                               coordinates=src_coords)
             src.data[:] = wavelet[:] if wavelet is not None else 0.
         u_n = as_tuple(u)[0].forward if fw else as_tuple(u)[0].backward
-        geom_expr += src.inject(field=u_n, expr=src*dt**2/m)
+        scale = dt / m if time_order == 1 else dt**2 / m
+        geom_expr += src.inject(field=u_n, expr=src*scale)
     # Setup adjoint wavefield sampling at source locations
     rcv = None
     if rec_coords is not None:

@@ -10,7 +10,8 @@ dt = srcGeometry.dt[1]
         ##################################ISIC########################################################
         println("Testing isic")
         @timeit TIMEROUTPUT "ISIC" begin
-                opt = Options(sum_padding=true, free_surface=fs, isic=true, f0=f0)
+                opt = Options(sum_padding=true, free_surface=fs, isic=true,
+                        time_order=time_order, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -33,7 +34,8 @@ dt = srcGeometry.dt[1]
         ##################################checkpointing###############################################
         println("Testing checkpointing")
         @timeit TIMEROUTPUT "Checkpointing" begin
-                opt = Options(sum_padding=true, free_surface=fs, optimal_checkpointing=true, f0=f0)
+                opt = Options(sum_padding=true, free_surface=fs, optimal_checkpointing=true,
+                        time_order=time_order, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -54,7 +56,8 @@ dt = srcGeometry.dt[1]
         ##################################DFT#########################################################
         println("Testing DFT")
         @timeit TIMEROUTPUT "DFT" begin
-                opt = Options(sum_padding=true, free_surface=fs, frequencies=[2.5, 4.5], f0=f0)
+                opt = Options(sum_padding=true, free_surface=fs, frequencies=[2.5, 4.5],
+                        time_order=time_order, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -74,7 +77,8 @@ dt = srcGeometry.dt[1]
         ################################## DFT time subsampled#########################################
         println("Testing subsampled in time DFT")
         @timeit TIMEROUTPUT "Subsampled DFT" begin
-                opt = Options(sum_padding=true, free_surface=fs, frequencies=[2.5, 4.5], dft_subsampling_factor=4, f0=f0)
+                opt = Options(sum_padding=true, free_surface=fs, frequencies=[2.5, 4.5], dft_subsampling_factor=4,
+                        time_order=time_order, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -94,7 +98,8 @@ dt = srcGeometry.dt[1]
         ##################################subsampling#################################################
         println("Testing subsampling")
         @timeit TIMEROUTPUT "Subsampling" begin
-                opt = Options(sum_padding=true, free_surface=fs, subsampling_factor=4, f0=f0)
+                opt = Options(sum_padding=true, free_surface=fs, subsampling_factor=4,
+                        time_order=time_order, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling
@@ -113,7 +118,8 @@ dt = srcGeometry.dt[1]
         ##################################ISIC + DFT #########################################################
         println("Testing isic+dft")
         @timeit TIMEROUTPUT "ISIC+DFT" begin
-                opt = Options(sum_padding=true, free_surface=fs, isic=true, frequencies=[2.5, 4.5], f0=f0)
+                opt = Options(sum_padding=true, free_surface=fs, isic=true, frequencies=[2.5, 4.5],
+                        time_order=time_order, f0=f0)
                 F = judiModeling(model0, srcGeometry, recGeometry; options=opt)
 
                 # Linearized modeling

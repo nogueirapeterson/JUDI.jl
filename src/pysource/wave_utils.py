@@ -1,14 +1,15 @@
 import numpy as np
 from sympy import cos, sin, sign
 
-from devito import (TimeFunction, Function, Inc, DefaultDimension,
-                    Eq, ConditionalDimension, Dimension)
+from devito import (VectorTimeFunction, TimeFunction, Function, Inc,
+                    DefaultDimension, Eq, ConditionalDimension, Dimension, NODE)
 from devito.data.allocators import ExternalAllocator
 from devito.tools import as_tuple, memoized_func
 from devito.symbolics import retrieve_functions, INT
 
 
-def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1):
+def wavefield(model, space_order, time_order=2, save=False, nt=None, fw=True, name='',
+              t_sub=1):
     """
     Create the wavefield for the wave equation
 
@@ -19,6 +20,8 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
         Physical model
     space_order: int
         Spatial discretization order
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     save : Bool
         Whether or not to save the time history
     nt : int (optional)
@@ -37,8 +40,9 @@ def wavefield(model, space_order, save=False, nt=None, fw=True, name='', t_sub=1
                          space_order=space_order, save=None if not save else nt)
         return (u, v)
     else:
-        return TimeFunction(name=name, grid=model.grid, time_order=2,
-                            space_order=space_order, save=None if not save else nt)
+        return TimeFunction(name=name, grid=model.grid, time_order=time_order,
+                            space_order=space_order, save=None if not save else nt,
+                            staggered=NODE if time_order == 1 else None)
 
 
 @memoized_func
@@ -52,11 +56,29 @@ def memory_field(p):
     p : TimeFunction
         Forward wavefield
     """
-    return TimeFunction(name='r%s' % p.name, grid=p.grid, time_order=2,
-                        space_order=p.space_order, save=None)
+    return TimeFunction(name='r%s' % p.name, grid=p.grid, time_order=p.time_order,
+                        space_order=p.space_order, save=p.save,
+                        staggered=NODE if p.time_order == 1 else None)
 
 
-def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
+def particle_velocity(model, space_order, time_order=2, save=False, nt=None, fw=True,
+                      name='', t_sub=1):
+    """
+    Particle velocity for viscosity modeling.
+
+    Parameters
+    ----------
+
+    v : VectorTimeFunction
+        Particle velocity
+    """
+    name = name+"v" if fw else name+"va"
+    save = False if t_sub > 1 else save
+    return VectorTimeFunction(name=name, grid=model.grid, time_order=time_order,
+                              space_order=space_order, save=None if not save else nt)
+
+
+def wavefield_subsampled(model, u, nt, t_sub, space_order=8, time_order=2):
     """
     Create a subsampled wavefield
 
@@ -84,9 +106,9 @@ def wavefield_subsampled(model, u, nt, t_sub, space_order=8):
         return None, []
 
     for wf in as_tuple(u):
-        usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid, time_order=2,
-                             space_order=space_order, time_dim=time_subsampled,
-                             save=nsave)
+        usave = TimeFunction(name='us_%s' % wf.name, grid=model.grid,
+                             time_order=time_order, space_order=space_order,
+                             time_dim=time_subsampled, save=nsave)
         wf_s.append(usave)
         eq_save.append(Eq(usave, wf))
     return wf_s, eq_save

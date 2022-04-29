@@ -13,7 +13,7 @@ dt = srcGeometry.dt[1]
 
 ###################################################################################################
 
-@testset "FWI gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs)" begin
+@testset "FWI gradient test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs) and time_order $(time_order)" begin
 	# Gradient test
 	h = 5f-2
 	maxiter = 6
@@ -23,7 +23,7 @@ dt = srcGeometry.dt[1]
 	modelH = deepcopy(model0)
 
 	# Observed data
-	opt = Options(sum_padding=true, free_surface=fs, f0=f0)
+	opt = Options(sum_padding=true, free_surface=fs, time_order=time_order, f0=f0)
 	F = judiModeling(model, srcGeometry, recGeometry; options=opt)
 	d = F*q
 

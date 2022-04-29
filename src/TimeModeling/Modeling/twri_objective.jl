@@ -57,7 +57,7 @@ subsample(opt::TWRIOptions, srcnum::Int) = getindex(opt, srcnum)
     twri_objective(model, source, dobs; options=Options(), optionswri=TWRIOptions())
 
 Evaluate the time domain Wavefield reconstruction inversion objective function. Returns a tuple with function value and
-gradient(s) w.r.t to m and/or y. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and 
+gradient(s) w.r.t to m and/or y. `model` is a `Model` structure with the current velocity model and `source` and `dobs` are the wavelets and
 observed data of type `judiVector`.
 
 Example
@@ -78,7 +78,7 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
         model = model_full
     end
 
-    # Set up Python model structure 
+    # Set up Python model structure
     modelPy = devito_model(model, options)
     dtComp = convert(Float32, modelPy."critical_dt")
 
@@ -97,7 +97,8 @@ function twri_objective(model_full::Model, source::judiVector, dObs::judiVector,
     obj, gradm, grady = pycall(ac."wri_func", PyObject,
                                modelPy, src_coords, qIn, rec_coords, dObserved, Y,
                                t_sub=options.subsampling_factor, space_order=options.space_order,
-                               grad=optionswri.params, grad_corr=optionswri.grad_corr, eps=optionswri.eps,
+                               time_order=options.time_order, grad=optionswri.params,
+                               grad_corr=optionswri.grad_corr, eps=optionswri.eps,
                                alpha_op=optionswri.comp_alpha, w_fun=optionswri.weight_fun,
                                freq_list=freqs, wfilt=wfilt, f0=options.f0)
 

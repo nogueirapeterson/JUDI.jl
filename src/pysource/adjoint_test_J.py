@@ -20,11 +20,14 @@ parser.add_argument('-so', dest='space_order', default=8, type=int,
                     help="Spatial discretization order")
 parser.add_argument('-nlayer', dest='nlayer', default=3, type=int,
                     help="Number of layers in model")
+parser.add_argument('-to', dest='time_order', default=2, type=int,
+                    help="Time discretization order")
 
 args = parser.parse_args()
 is_tti = args.tti
 is_viscoacoustic = args.viscoacoustic
 so = args.space_order
+to = args.time_order
 
 dtype = np.float32
 
@@ -84,19 +87,19 @@ rec_t.coordinates.data[:, 1] = 20.
 # Linearized data
 print("Forward J")
 dD_hat, u0l, _ = born(model, src.coordinates.data, rec_t.coordinates.data,
-                      src.data, save=True, f0=f1)
+                      src.data, save=True, time_order=to, f0=f1)
 # dD_hat, u0l, _ = born(model, None, rec_t.coordinates.data,
 #                       src.data, save=True, ws=weights)
 # Forward
 print("Forward")
 _, u0, _ = forward(model, src.coordinates.data, rec_t.coordinates.data,
-                   src.data, save=True, f0=f1)
+                   src.data, save=True, time_order=to, f0=f1)
 # _, u0, _ = forward(model, None, rec_t.coordinates.data,
 #                    src.data, save=True, ws=weights)
 
 # gradient
 print("Adjoint J")
-dm_hat, _ = gradient(model, dD_hat, rec_t.coordinates.data, u0, f0=f1)
+dm_hat, _ = gradient(model, dD_hat, rec_t.coordinates.data, u0, time_order=to, f0=f1)
 
 a2 = model.critical_dt * inner(dD_hat, dD_hat)
 b2 = inner(dm_hat, model.dm)

@@ -1,11 +1,11 @@
-from devito import Eq, solve
+from devito import Eq, solve, div, grad
 from sympy import sqrt
 
 from wave_utils import freesurface, memory_field
 from FD_utils import laplacian, sa_tti
 
 
-def wave_kernel(model, u, fw=True, q=None, f0=0.015):
+def wave_kernel(model, u, time_order=2, fw=True, q=None, f0=0.015, **kwargs):
     """
     Pde kernel corresponding the the model for the input wavefield
 
@@ -15,6 +15,8 @@ def wave_kernel(model, u, fw=True, q=None, f0=0.015):
         Physical model
     u : TimeFunction or tuple
         wavefield (tuple if TTI or Viscoacoustic)
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     fw : Bool
         Whether forward or backward in time propagation
     q : TimeFunction or Expr
@@ -24,7 +26,8 @@ def wave_kernel(model, u, fw=True, q=None, f0=0.015):
     if model.is_tti:
         pde = tti_kernel(model, u[0], u[1], fw=fw, q=q)
     elif model.is_viscoacoustic:
-        pde = SLS_2nd_order(model, u, fw=fw, q=q, f0=f0)
+        eq_kernel = stencils[time_order]
+        pde = eq_kernel(model, u, fw=fw, q=q, f0=f0, **kwargs)
     else:
         pde = acoustic_kernel(model, u, fw=fw, q=q)
     return pde
@@ -64,7 +67,88 @@ def acoustic_kernel(model, u, fw=True, q=None):
     return pde
 
 
-def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
+def SLS_1st_order(model, p, fw=True, q=None, f0=0.015, **kwargs):
+    """
+    Implementation of the 1st order viscoacoustic wave-equation
+    from Blanch and Symes (1995) / Dutta and Schuster (2014).
+
+    https://library.seg.org/doi/pdf/10.1190/1.1822695
+    https://library.seg.org/doi/pdf/10.1190/geo2013-0414.1
+
+    Parameters
+    ----------
+    model: Model
+        Physical model
+    p : TimeFunction
+        Pressure field
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
+    fw: Bool
+        Whether forward or backward in time propagation
+    q : TimeFunction or Expr
+        Full time-space source as a tuple (one value for each component)
+    f0 : Peak frequency
+    """
+    qp, b, damp, m = model.qp, model.irho, model.damp, model.m
+
+    # Source
+    q = q or 0
+
+    # The stress relaxation parameter
+    t_s = (sqrt(1.+1./qp**2)-1./qp)/f0
+
+    # The strain relaxation parameter
+    t_ep = 1./(f0**2*t_s)
+
+    # The relaxation time
+    tt = (t_ep/t_s)-1.
+
+    # Density
+    rho = 1. / b
+
+    # memory variable
+    r = memory_field(p)
+
+    # Particle Velocity
+    v = kwargs.pop('v')
+
+    if fw:
+
+        # Particle velocity
+        pde_v = v.dt + b * grad(p)
+        u_v = Eq(v.forward, damp * solve(pde_v, v.forward))
+
+        # Attenuation Memory variable
+        pde_r = r.dt + (1. / t_s) * (r + tt * rho * div(v.forward))
+        u_r = Eq(r.forward, damp * solve(pde_r, r.forward))
+
+        # Pressure
+        pde_p = m * p.dt + rho * (tt + 1.) * div(v.forward) + r.forward - q
+        u_p = Eq(p.forward, damp * solve(pde_p, p.forward))
+
+        return [u_v, u_r, u_p]
+
+    else:
+
+        # Attenuation Memory variable
+        pde_r = r.dt.T + (1. / t_s) * r + p
+        u_r = Eq(r.backward, damp * solve(pde_r, r.backward))
+
+        # Particle velocity
+        # Because v is a Vector, `.T` applies a standard matrix transpose
+        # so we need to do the derivative transpose by hand with `-*.dtl`
+        pde_v = -v.dtl - grad(rho * (1. + tt) * p) - \
+            grad((1. / t_s) * rho * tt * r.backward)
+        u_v = Eq(v.backward, damp * solve(pde_v, v.backward))
+
+        # Pressure
+        pde_p = m * p.dt.T - div(b * v.backward)
+        u_p = Eq(p.backward, damp * solve(pde_p, p.backward))
+
+        return [u_r, u_v, u_p]
+
+
+def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015, **kwargs):
     """
     Viscoacoustic 2nd SLS wave equation.
     https://library.seg.org/doi/10.1190/geo2013-0030.1
@@ -77,10 +161,10 @@ def SLS_2nd_order(model, p, fw=True, q=None, f0=0.015):
     ----------
     model: Model
         Physical model
-    u1 : TimeFunction
+    p : TimeFunction
         Pressure field
-    u2 : TimeFunction
-        Attenuation Memory variable
+    time_order: Int (optional)
+        Time discretization order, defaults to 2
     fw: Bool
         Whether forward or backward in time propagation
     q : TimeFunction or Expr
@@ -173,3 +257,6 @@ def tti_kernel(model, u1, u2, fw=True, q=None):
         second_stencil = Eq(u2_n, stencilr)
 
     return [first_stencil, second_stencil] + pdea
+
+
+stencils = {1: SLS_1st_order, 2: SLS_2nd_order}

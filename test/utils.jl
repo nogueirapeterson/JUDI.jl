@@ -126,6 +126,10 @@ function parse_commandline()
             help = "Number of workers"
             arg_type = Int
             default = 1
+        "--time_order", "-t"
+            help = "Time discretization order"
+            arg_type = Int
+            default = 2
     end
     return parse_args(s)
 end

@@ -14,9 +14,9 @@ dt = srcGeometry.dt[1]
 m0 = model0.m
 ######################## WITH DENSITY ############################################
 
-@testset "Jacobian test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) freesurface $(fs)" begin
+@testset "Jacobian test with $(nlayer) layers and tti $(tti) and viscoacoustic $(viscoacoustic) and freesurface $(fs) and time_order $(time_order)" begin
     # Write shots as segy files to disk
-    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, f0=f0)
+    opt = Options(sum_padding=true, dt_comp=dt, free_surface=fs, time_order=time_order, f0=f0)
 
     # Setup operators
     Pr = judiProjection(recGeometry)
@@ -55,9 +55,9 @@ end
 
 ### Extended source
 
-@testset "Extended source Jacobian test with $(nlayer) layers and tti $(tti) and freesurface $(fs)" begin
+@testset "Extended source Jacobian test with $(nlayer) layers and tti $(tti) and freesurface $(fs) and time_order $(time_order)" begin
     @timeit TIMEROUTPUT "Extended source Jacobian" begin
-        opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=fs, f0=f0)
+        opt = Options(sum_padding=true, dt_comp=dt, return_array=true, free_surface=fs, time_order=time_order, f0=f0)
 
         # Setup operators
         Pr = judiProjection(recGeometry)

@@ -8,6 +8,7 @@ export Options, JUDIOptions
 # Object for velocity/slowness models
 mutable struct JUDIOptions
     space_order::Integer
+    time_order::Integer
     free_surface::Bool
     limit_m::Bool
     buffer_size::AbstractFloat
@@ -28,6 +29,7 @@ end
 """
     JUDIOptions
         space_order::Integer
+        time_order::Integer
         free_surface::Bool
         limit_m::Bool
         buffer_size::AbstractFloat
@@ -50,6 +52,8 @@ end
 Options structure for seismic modeling.
 
 `space_order`: finite difference space order for wave equation (default is 8, needs to be multiple of 4)
+
+`time_order`: time discretization order for wave equation (default is 2)
 
 `free_surface`: set to `true` to enable a free surface boundary condition.
 
@@ -86,7 +90,7 @@ Constructor
 
 All arguments are optional keyword arguments with the following default values:
 
-    Options(;space_order=8, free_surface=false,
+    Options(;space_order=8, time_order=2, free_surface=false,
             limit_m=false, buffer_size=1e3,
             save_data_to_disk=false, file_path="",
             file_name="shot", sum_padding=false,
@@ -98,6 +102,7 @@ All arguments are optional keyword arguments with the following default values:
 
 """
 Options(;space_order=8,
+         time_order=2,
 		 free_surface=false,
          limit_m=false,
 		 buffer_size=1e3,
@@ -116,7 +121,8 @@ Options(;space_order=8,
          dt_comp=nothing,
          f0=0.015f0) =
 		 JUDIOptions(space_order,
-		 		 free_surface,
+                 time_order,
+                 free_surface,
 		         limit_m,
 				 buffer_size,
 				 save_data_to_disk,
